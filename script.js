@@ -335,21 +335,41 @@
 
         // Contrast Logic
         function checkContrast(bgColor) {
-            const ratio = chroma.contrast(bgColor, '#ffffff').toFixed(1);
-            let iconSvg, titleMsg, adviceMsg, titleClass;
+            const ratio = parseFloat(chroma.contrast(bgColor, '#ffffff').toFixed(1));
+            // Curve the ratio into a fun 0-100% scale
+            let ratioScale = Math.min(100, ratio >= 7 ? 100 : (ratio >= 4.5 ? Math.floor(90 + ((ratio - 4.5) / 2.5) * 9) : (ratio >= 3 ? Math.floor(60 + ((ratio - 3) / 1.5) * 29) : Math.floor((ratio / 3) * 59))));
+            if (ratioScale < 0) ratioScale = 0;
+            
+            let emoji, titleMsg, adviceMsg, colorClass, gradientClass;
 
-            if (ratio >= 4.5) {
-                iconSvg = `<svg class="w-5 h-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>`;
-                titleMsg = "Excellent"; adviceMsg = "White text is perfectly readable."; titleClass = "text-emerald-800 dark:text-emerald-300";
-            } else if (ratio >= 3) {
-                iconSvg = `<svg class="w-5 h-5 flex-shrink-0 text-amber-500 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
-                titleMsg = "Needs Bold Text"; adviceMsg = "Try to use darker color behind the text."; titleClass = "text-amber-800 dark:text-amber-300";
+            if (ratioScale >= 90) {
+                emoji = "😎"; titleMsg = "Readability"; adviceMsg = "Eyes say literal thank you!";
+                colorClass = "text-emerald-700 dark:text-emerald-300"; gradientClass = "from-emerald-400 to-teal-500";
+            } else if (ratioScale >= 60) {
+                emoji = "🧐"; titleMsg = "Readability"; adviceMsg = "Squinting slightly. Use BOLD text!";
+                colorClass = "text-amber-600 dark:text-amber-400"; gradientClass = "from-amber-400 to-orange-500";
             } else {
-                iconSvg = `<svg class="w-5 h-5 flex-shrink-0 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
-                titleMsg = "Poor Readability"; adviceMsg = "Try to use darker color behind the text."; titleClass = "text-red-800 dark:text-red-300";
+                emoji = "😵‍💫"; titleMsg = "Readability"; adviceMsg = "Big yikes. I am legally blind rn.";
+                colorClass = "text-red-600 dark:text-red-400"; gradientClass = "from-red-500 to-rose-600";
             }
 
-            statusBadgeContainer.innerHTML = `${iconSvg}<div class="flex items-center gap-2 whitespace-nowrap overflow-hidden"><span class="text-base font-extrabold ${titleClass}">${titleMsg}</span><span class="text-base font-medium text-slate-400 dark:text-white/30 hidden sm:inline-block">—</span><span class="text-base font-medium text-slate-600 dark:text-white/70 text-ellipsis overflow-hidden">${adviceMsg}</span></div>`;
+            statusBadgeContainer.innerHTML = `
+                <div class="flex flex-col w-full relative z-10 w-[100%]">
+                  <div class="flex justify-between items-end mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-2xl animate-[bounce_2s_infinite] drop-shadow-md origin-bottom">${emoji}</span>
+                      <span class="text-[11px] font-black tracking-widest uppercase ${colorClass} drop-shadow-sm">${titleMsg}</span>
+                    </div>
+                    <span class="text-xl font-black ${colorClass} drop-shadow-md">${ratioScale}%</span>
+                  </div>
+                  <div class="relative h-3 w-full bg-slate-200 dark:bg-black/40 rounded-full overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] border border-black/5 dark:border-white/10">
+                     <div class="absolute inset-y-0 left-0 bg-gradient-to-r ${gradientClass} rounded-full transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden" style="width: ${ratioScale}%;">
+                        <div class="absolute inset-0 w-[200%] h-full opacity-40 bg-[linear-gradient(-45deg,rgba(255,255,255,0.25)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.25)_50%,rgba(255,255,255,0.25)_75%,transparent_75%,transparent)] bg-[length:1rem_1rem]"></div>
+                     </div>
+                  </div>
+                  <span class="text-xs font-bold text-slate-700 dark:text-white/80 text-center mt-3 bg-black/5 dark:bg-white/10 py-1.5 px-3 rounded-lg shadow-sm border border-black/5 dark:border-white/10 backdrop-blur-sm">${adviceMsg}</span>
+                </div>
+            `;
         }
 
         // Harmony Logic
@@ -369,25 +389,54 @@
             
             const maxDist = Math.max(d1, d2, d3);
             
-            let iconSvg, titleMsg, adviceMsg, titleClass;
             const harmonyBadgeContainer = document.getElementById('harmonyBadgeContainer');
             if(!harmonyBadgeContainer) return;
 
+            // Algorithm to determine % Vibe Check mathematically
+            let vibePct = 0;
             if (maxDist >= 260) {
-                iconSvg = `<svg class="w-5 h-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>`;
-                titleMsg = "Excellent Match"; adviceMsg = "Smooth, analogous transition."; titleClass = "text-emerald-800 dark:text-emerald-300";
+                // Analogous clusters (very smooth)
+                vibePct = Math.min(100, Math.floor(90 + (maxDist - 260) / 10));
             } else if (maxDist <= 150) {
-                iconSvg = `<svg class="w-5 h-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>`;
-                titleMsg = "Excellent Match"; adviceMsg = "Vibrant, triadic harmony."; titleClass = "text-emerald-800 dark:text-emerald-300";
-            } else if (maxDist > 150 && maxDist < 200) {
-                iconSvg = `<svg class="w-5 h-5 flex-shrink-0 text-amber-500 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
-                titleMsg = "Fair Match"; adviceMsg = "Good, but might feel unbalanced."; titleClass = "text-amber-800 dark:text-amber-300";
+                // Triadic spread (very vibrant)
+                const diff = Math.abs(maxDist - 120);
+                vibePct = Math.max(90, 100 - diff); 
             } else {
-                iconSvg = `<svg class="w-5 h-5 flex-shrink-0 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
-                titleMsg = "Clashing Match"; adviceMsg = "Try Smart Matches below."; titleClass = "text-red-800 dark:text-red-300";
+                // Complementary split / middle gap
+                const diff = Math.abs(maxDist - 205);
+                vibePct = Math.floor(40 + (diff / 55) * 49);
             }
 
-            harmonyBadgeContainer.innerHTML = `${iconSvg}<div class="flex items-center gap-2 whitespace-nowrap overflow-hidden"><span class="text-base font-extrabold ${titleClass}">${titleMsg}</span><span class="text-base font-medium text-slate-400 dark:text-white/30 hidden sm:inline-block">—</span><span class="text-base font-medium text-slate-600 dark:text-white/70 text-ellipsis overflow-hidden">${adviceMsg}</span></div>`;
+            let emoji, titleMsg, adviceMsg, colorClass, gradientClass;
+
+            if (vibePct >= 90) {
+                emoji = "✨"; titleMsg = "Vibe Check"; adviceMsg = "Absolute masterpiece. It slays.";
+                colorClass = "text-fuchsia-600 dark:text-fuchsia-400"; gradientClass = "from-fuchsia-400 to-purple-500";
+            } else if (vibePct >= 60) {
+                emoji = "💅"; titleMsg = "Vibe Check"; adviceMsg = "Kinda quirky, but we vibe with it.";
+                colorClass = "text-blue-600 dark:text-blue-400"; gradientClass = "from-blue-400 to-indigo-500";
+            } else {
+                emoji = "🫠"; titleMsg = "Vibe Check"; adviceMsg = "A chaotic aesthetic choice.";
+                colorClass = "text-rose-600 dark:text-rose-400"; gradientClass = "from-pink-500 to-rose-500";
+            }
+
+            harmonyBadgeContainer.innerHTML = `
+                <div class="flex flex-col w-full relative z-10 w-[100%]">
+                  <div class="flex justify-between items-end mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-2xl animate-[bounce_2s_infinite] drop-shadow-md origin-bottom" style="animation-delay: 200ms">${emoji}</span>
+                      <span class="text-[11px] font-black tracking-widest uppercase ${colorClass} drop-shadow-sm">${titleMsg}</span>
+                    </div>
+                    <span class="text-xl font-black ${colorClass} drop-shadow-md">${vibePct}%</span>
+                  </div>
+                  <div class="relative h-3 w-full bg-slate-200 dark:bg-black/40 rounded-full overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] border border-black/5 dark:border-white/10">
+                     <div class="absolute inset-y-0 left-0 bg-gradient-to-r ${gradientClass} rounded-full transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden" style="width: ${vibePct}%;">
+                        <div class="absolute inset-0 w-[200%] h-full opacity-40 bg-[linear-gradient(-45deg,rgba(255,255,255,0.25)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.25)_50%,rgba(255,255,255,0.25)_75%,transparent_75%,transparent)] bg-[length:1rem_1rem]"></div>
+                     </div>
+                  </div>
+                  <span class="text-xs font-bold text-slate-700 dark:text-white/80 text-center mt-3 bg-black/5 dark:bg-white/10 py-1.5 px-3 rounded-lg shadow-sm border border-black/5 dark:border-white/10 backdrop-blur-sm">${adviceMsg}</span>
+                </div>
+            `;
         }
 
         // Export and Utils
