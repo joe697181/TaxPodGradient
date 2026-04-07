@@ -40,6 +40,76 @@
         // Theme
         document.getElementById('themeToggle').addEventListener('click', () => { document.documentElement.classList.toggle('dark'); });
 
+        // --- Title Color Logic --- //
+        let titleColorHex = '#ffffff';
+        let titleColorFormat = 'hex';
+
+        const wellTitle = document.getElementById('wellTitle');
+        const glowTitle = document.getElementById('glowTitle');
+        const visualTitle = document.getElementById('visualTitle');
+        const inputTitle = document.getElementById('inputTitle');
+        const mainTitle = document.getElementById('mainTitle');
+
+        function syncTitleWell(hex) {
+            titleColorHex = hex;
+            visualTitle.style.backgroundColor = hex;
+            glowTitle.style.backgroundColor = hex;
+            mainTitle.style.color = hex;
+            mainTitle.classList.remove('text-white');
+            if (titleColorFormat === 'hex') {
+                inputTitle.value = hex.toUpperCase();
+            } else {
+                const [r, g, b] = chroma(hex).rgb();
+                inputTitle.value = `${r}, ${g}, ${b}`;
+            }
+            // Re-run contrast check so readability badge updates
+            const bgSample = document.getElementById('gradientLayer');
+            if (bgSample && pickerState && pickerState[0]) updateMainGradient();
+        }
+
+        window.toggleTitleFormat = function () {
+            titleColorFormat = (titleColorFormat === 'hex') ? 'rgb' : 'hex';
+            const tabBg = document.getElementById('tab-bg-title');
+            const tabHex = document.getElementById('tab-hex-title');
+            const tabRgb = document.getElementById('tab-rgb-title');
+            if (titleColorFormat === 'rgb') {
+                tabBg.style.transform = 'translateX(100%)';
+                tabRgb.className = 'relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-800 dark:text-white transition-colors';
+                tabHex.className = 'relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-500 dark:text-white/50 transition-colors';
+            } else {
+                tabBg.style.transform = 'translateX(0)';
+                tabHex.className = 'relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-800 dark:text-white transition-colors';
+                tabRgb.className = 'relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-500 dark:text-white/50 transition-colors';
+            }
+            syncTitleWell(titleColorHex);
+        };
+
+        inputTitle.addEventListener('change', (e) => {
+            let val = e.target.value.trim();
+            try {
+                let parsed = (titleColorFormat === 'rgb' && !val.startsWith('rgb')) ? chroma(`rgb(${val})`) : chroma(val);
+                syncTitleWell(parsed.hex());
+            } catch (err) { syncTitleWell(titleColorHex); }
+        });
+
+        wellTitle.addEventListener('click', () => {
+            // Open the shared colorPopover positioned at wellTitle
+            if (activePickerId === 'title') { closePicker(); return; }
+            activePickerId = 'title';
+            const rect = wellTitle.getBoundingClientRect();
+            let leftPos = rect.left + window.scrollX - 100;
+            if (leftPos < 20) leftPos = 20;
+            colorPopover.style.top = `${rect.bottom + window.scrollY + 15}px`;
+            colorPopover.style.left = `${leftPos}px`;
+            colorPopover.classList.remove('hidden-popover');
+            const color = chroma(titleColorHex);
+            const hsv = color.hsv();
+            currentH = isNaN(hsv[0]) ? 0 : hsv[0];
+            currentS = isNaN(hsv[1]) ? 0 : hsv[1];
+            currentV = isNaN(hsv[2]) ? 0 : hsv[2];
+            updatePickerUIFromHSV();
+        });
+
         // --- Custom Color Picker Popover Logic --- //
 
         // Close popover when clicking outside
@@ -139,7 +209,9 @@
             const hex = chroma.hsv(currentH, currentS, currentV).hex();
             updatePickerUIFromHSV();
 
-            if (activePickerId !== null) {
+            if (activePickerId === 'title') {
+                syncTitleWell(hex);
+            } else if (activePickerId !== null) {
                 pickerState[activePickerId].val = hex;
                 syncInputsAndWells(activePickerId);
                 updateMainGradient();
@@ -313,7 +385,7 @@
             gradientLayer.style.background = cssGradient;
             ambientGlow.style.background = cssGradient;
 
-            const textBackgroundColor = getTopLeftColor(angle, chromaScale);
+            const textBackgroundColor = getBackgroundSamplePoint(angle, chromaScale);
             checkContrast(textBackgroundColor);
             checkHarmony(pickerState[0].val, pickerState[1].val, pickerState[2].val);
 
@@ -323,14 +395,23 @@
             }
         }
 
-        function getTopLeftColor(angle, scaleFunction) {
+        function getBackgroundSamplePoint(angle, scaleFunction) {
             const rad = angle * Math.PI / 180;
             const vx = Math.sin(rad);
             const vy = -Math.cos(rad);
+            
+            // Sample at 15% from left and 20% from top (approx where title text starts)
+            const sampleX = -11.2; // -16 + (32 * 0.15)
+            const sampleY = -5.4;  // -9 + (18 * 0.20)
+            
             const corners = [{ x: -16, y: -9 }, { x: 16, y: -9 }, { x: 16, y: 9 }, { x: -16, y: 9 }];
             const projections = corners.map(c => c.x * vx + c.y * vy);
-            const t = (projections[0] - Math.min(...projections)) / (Math.max(...projections) - Math.min(...projections));
-            return scaleFunction(t).hex();
+            const minP = Math.min(...projections);
+            const maxP = Math.max(...projections);
+            
+            const sampleP = sampleX * vx + sampleY * vy;
+            const t = (sampleP - minP) / (maxP - minP);
+            return scaleFunction(Math.max(0, Math.min(1, t))).hex();
         }
 
         function animateValue(obj, start, end, duration) {
@@ -344,23 +425,44 @@
             window.requestAnimationFrame(step);
         }
 
-        // Contrast Logic
+        // Contrast Logic — compares the title text color vs the gradient background
         function checkContrast(bgColor) {
-            const ratio = parseFloat(chroma.contrast(bgColor, '#ffffff').toFixed(1));
-            // Curve the ratio into a fun 0-100% scale
-            let ratioScale = Math.min(100, ratio >= 7 ? 100 : (ratio >= 4.5 ? Math.floor(90 + ((ratio - 4.5) / 2.5) * 9) : (ratio >= 3 ? Math.floor(60 + ((ratio - 3) / 1.5) * 29) : Math.floor((ratio / 3) * 59))));
-            if (ratioScale < 0) ratioScale = 0;
+            const textColor = (typeof titleColorHex !== 'undefined') ? titleColorHex : '#ffffff';
+            const ratio = parseFloat(chroma.contrast(bgColor, textColor).toFixed(1));
+            
+            // Smoother, more nuanced 5-tier scale for better "fairness"
+            let ratioScale;
+            if (ratio >= 7) {
+                ratioScale = 100; // AAA Pass
+            } else if (ratio >= 4.5) {
+                ratioScale = 90 + ((ratio - 4.5) / 2.5) * 10; // AA Pass
+            } else if (ratio >= 3) {
+                ratioScale = 65 + ((ratio - 3) / 1.5) * 25; // Large Text Pass (Title)
+            } else if (ratio >= 1.5) {
+                ratioScale = 20 + ((ratio - 1.5) / 1.5) * 45; // Poor Color
+            } else {
+                ratioScale = ((ratio - 1) / 0.5) * 20; // Blindness zone
+            }
+            
+            ratioScale = Math.round(Math.max(0, Math.min(100, ratioScale)));
             
             let emoji, titleMsg, adviceMsg, colorClass, gradientClass;
 
-            if (ratioScale >= 90) {
-                emoji = "😎"; titleMsg = "Readability"; adviceMsg = "Eyes say literal thank you!";
+            if (ratioScale >= 95) {
+                emoji = "😎"; titleMsg = "Readability"; adviceMsg = "Perfect clarity! Eyes say thanks. ✨";
                 colorClass = "text-emerald-700 dark:text-emerald-300"; gradientClass = "from-emerald-400 to-teal-500";
+            } else if (ratioScale >= 80) {
+                emoji = "🧐"; titleMsg = "Readability"; adviceMsg = "Looking sharp! My eyes are happy. 💖";
+                colorClass = "text-emerald-600 dark:text-emerald-400"; gradientClass = "from-emerald-300 to-teal-400";
             } else if (ratioScale >= 60) {
-                emoji = "🧐"; titleMsg = "Readability"; adviceMsg = "Squinting slightly. Use BOLD text!";
+                emoji = "🤓"; titleMsg = "Readability"; adviceMsg = "Decent, but maybe go bolder? 💅";
                 colorClass = "text-amber-600 dark:text-amber-400"; gradientClass = "from-amber-400 to-orange-500";
+            } else if (ratioScale >= 30) {
+                emoji = "😵‍Z"; titleMsg = "Readability"; adviceMsg = "Getting tough! Squint mode ON. 🫠"; // Z for fix
+                emoji = "😵‍💫"; // Fix
+                colorClass = "text-orange-600 dark:text-orange-400"; gradientClass = "from-orange-500 to-rose-500";
             } else {
-                emoji = "😵‍💫"; titleMsg = "Readability"; adviceMsg = "Big yikes. I am legally blind rn.";
+                emoji = "😵"; titleMsg = "Readability"; adviceMsg = "Visual chaos! Help me see! 🆘";
                 colorClass = "text-red-600 dark:text-red-400"; gradientClass = "from-red-500 to-rose-600";
             }
 
@@ -484,6 +586,7 @@
 
         // Init
         setGlobalColors('#3b82f6', '#8b5cf6', '#d946ef');
+        syncTitleWell('#ffffff'); // Initialize title color well to white
 
 
         // Splash Screen Logic
