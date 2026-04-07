@@ -315,6 +315,7 @@
 
             const textBackgroundColor = getTopLeftColor(angle, chromaScale);
             checkContrast(textBackgroundColor);
+            checkHarmony(pickerState[0].val, pickerState[1].val, pickerState[2].val);
 
             if (smartSuggestionsContainer.dataset.lastBase !== pickerState[0].val) {
                 generateSmartMatches(pickerState[0].val);
@@ -349,6 +350,44 @@
             }
 
             statusBadgeContainer.innerHTML = `${iconSvg}<div class="flex items-center gap-2 whitespace-nowrap overflow-hidden"><span class="text-base font-extrabold ${titleClass}">${titleMsg}</span><span class="text-base font-medium text-slate-400 dark:text-white/30 hidden sm:inline-block">—</span><span class="text-base font-medium text-slate-600 dark:text-white/70 text-ellipsis overflow-hidden">${adviceMsg}</span></div>`;
+        }
+
+        // Harmony Logic
+        function checkHarmony(c1, c2, c3) {
+            let h1 = chroma(c1).get('lch.h');
+            let h2 = chroma(c2).get('lch.h');
+            let h3 = chroma(c3).get('lch.h');
+
+            h1 = isNaN(h1) ? 0 : h1;
+            h2 = isNaN(h2) ? 0 : h2;
+            h3 = isNaN(h3) ? 0 : h3;
+
+            const hues = [h1, h2, h3].sort((a, b) => a - b);
+            const d1 = hues[1] - hues[0];
+            const d2 = hues[2] - hues[1];
+            const d3 = (360 - hues[2]) + hues[0]; 
+            
+            const maxDist = Math.max(d1, d2, d3);
+            
+            let iconSvg, titleMsg, adviceMsg, titleClass;
+            const harmonyBadgeContainer = document.getElementById('harmonyBadgeContainer');
+            if(!harmonyBadgeContainer) return;
+
+            if (maxDist >= 260) {
+                iconSvg = `<svg class="w-5 h-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>`;
+                titleMsg = "Excellent Match"; adviceMsg = "Smooth, analogous transition."; titleClass = "text-emerald-800 dark:text-emerald-300";
+            } else if (maxDist <= 150) {
+                iconSvg = `<svg class="w-5 h-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>`;
+                titleMsg = "Excellent Match"; adviceMsg = "Vibrant, triadic harmony."; titleClass = "text-emerald-800 dark:text-emerald-300";
+            } else if (maxDist > 150 && maxDist < 200) {
+                iconSvg = `<svg class="w-5 h-5 flex-shrink-0 text-amber-500 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
+                titleMsg = "Fair Match"; adviceMsg = "Good, but might feel unbalanced."; titleClass = "text-amber-800 dark:text-amber-300";
+            } else {
+                iconSvg = `<svg class="w-5 h-5 flex-shrink-0 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
+                titleMsg = "Clashing Match"; adviceMsg = "Try Smart Matches below."; titleClass = "text-red-800 dark:text-red-300";
+            }
+
+            harmonyBadgeContainer.innerHTML = `${iconSvg}<div class="flex items-center gap-2 whitespace-nowrap overflow-hidden"><span class="text-base font-extrabold ${titleClass}">${titleMsg}</span><span class="text-base font-medium text-slate-400 dark:text-white/30 hidden sm:inline-block">—</span><span class="text-base font-medium text-slate-600 dark:text-white/70 text-ellipsis overflow-hidden">${adviceMsg}</span></div>`;
         }
 
         // Export and Utils
