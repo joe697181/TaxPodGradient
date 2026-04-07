@@ -333,6 +333,17 @@
             return scaleFunction(t).hex();
         }
 
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerText = Math.floor(progress * (end - start) + start) + '%';
+                if (progress < 1) window.requestAnimationFrame(step);
+            };
+            window.requestAnimationFrame(step);
+        }
+
         // Contrast Logic
         function checkContrast(bgColor) {
             const ratio = parseFloat(chroma.contrast(bgColor, '#ffffff').toFixed(1));
@@ -353,23 +364,23 @@
                 colorClass = "text-red-600 dark:text-red-400"; gradientClass = "from-red-500 to-rose-600";
             }
 
-            statusBadgeContainer.innerHTML = `
-                <div class="flex flex-col w-full relative z-10 w-[100%]">
-                  <div class="flex justify-between items-end mb-2">
-                    <div class="flex items-center gap-2">
-                      <span class="text-2xl animate-[bounce_2s_infinite] drop-shadow-md origin-bottom">${emoji}</span>
-                      <span class="text-[11px] font-black tracking-widest uppercase ${colorClass} drop-shadow-sm">${titleMsg}</span>
-                    </div>
-                    <span class="text-xl font-black ${colorClass} drop-shadow-md">${ratioScale}%</span>
-                  </div>
-                  <div class="relative h-3 w-full bg-slate-200 dark:bg-black/40 rounded-full overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] border border-black/5 dark:border-white/10">
-                     <div class="absolute inset-y-0 left-0 bg-gradient-to-r ${gradientClass} rounded-full transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden" style="width: ${ratioScale}%;">
-                        <div class="absolute inset-0 w-[200%] h-full opacity-40 bg-[linear-gradient(-45deg,rgba(255,255,255,0.25)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.25)_50%,rgba(255,255,255,0.25)_75%,transparent_75%,transparent)] bg-[length:1rem_1rem]"></div>
-                     </div>
-                  </div>
-                  <span class="text-xs font-bold text-slate-700 dark:text-white/80 text-center mt-3 bg-black/5 dark:bg-white/10 py-1.5 px-3 rounded-lg shadow-sm border border-black/5 dark:border-white/10 backdrop-blur-sm">${adviceMsg}</span>
-                </div>
-            `;
+            const wrap = document.getElementById('contrastDisplayWrap');
+            if (wrap) {
+                wrap.classList.remove('opacity-0'); wrap.classList.add('opacity-100');
+                document.getElementById('contrastEmoji').innerText = emoji;
+                document.getElementById('contrastTitle').innerText = titleMsg;
+                document.getElementById('contrastTitle').className = `text-[11px] font-black tracking-widest uppercase drop-shadow-sm transition-colors duration-500 ${colorClass}`;
+                
+                const pctEl = document.getElementById('contrastPct');
+                let currentPct = parseInt(pctEl.innerText) || 0;
+                animateValue(pctEl, currentPct, ratioScale, 1000);
+                pctEl.className = `text-xl font-black drop-shadow-md transition-colors duration-500 ${colorClass}`;
+
+                const bar = document.getElementById('contrastBar');
+                bar.style.width = `${ratioScale}%`;
+                bar.className = `absolute inset-y-0 left-0 rounded-full transition-all duration-[1000ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden bg-gradient-to-r ${gradientClass}`;
+                document.getElementById('contrastAdvice').innerText = adviceMsg;
+            }
         }
 
         // Harmony Logic
@@ -388,9 +399,6 @@
             const d3 = (360 - hues[2]) + hues[0]; 
             
             const maxDist = Math.max(d1, d2, d3);
-            
-            const harmonyBadgeContainer = document.getElementById('harmonyBadgeContainer');
-            if(!harmonyBadgeContainer) return;
 
             // Algorithm to determine % Vibe Check mathematically
             let vibePct = 0;
@@ -420,23 +428,23 @@
                 colorClass = "text-rose-600 dark:text-rose-400"; gradientClass = "from-pink-500 to-rose-500";
             }
 
-            harmonyBadgeContainer.innerHTML = `
-                <div class="flex flex-col w-full relative z-10 w-[100%]">
-                  <div class="flex justify-between items-end mb-2">
-                    <div class="flex items-center gap-2">
-                      <span class="text-2xl animate-[bounce_2s_infinite] drop-shadow-md origin-bottom" style="animation-delay: 200ms">${emoji}</span>
-                      <span class="text-[11px] font-black tracking-widest uppercase ${colorClass} drop-shadow-sm">${titleMsg}</span>
-                    </div>
-                    <span class="text-xl font-black ${colorClass} drop-shadow-md">${vibePct}%</span>
-                  </div>
-                  <div class="relative h-3 w-full bg-slate-200 dark:bg-black/40 rounded-full overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] border border-black/5 dark:border-white/10">
-                     <div class="absolute inset-y-0 left-0 bg-gradient-to-r ${gradientClass} rounded-full transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden" style="width: ${vibePct}%;">
-                        <div class="absolute inset-0 w-[200%] h-full opacity-40 bg-[linear-gradient(-45deg,rgba(255,255,255,0.25)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.25)_50%,rgba(255,255,255,0.25)_75%,transparent_75%,transparent)] bg-[length:1rem_1rem]"></div>
-                     </div>
-                  </div>
-                  <span class="text-xs font-bold text-slate-700 dark:text-white/80 text-center mt-3 bg-black/5 dark:bg-white/10 py-1.5 px-3 rounded-lg shadow-sm border border-black/5 dark:border-white/10 backdrop-blur-sm">${adviceMsg}</span>
-                </div>
-            `;
+            const wrap = document.getElementById('vibeDisplayWrap');
+            if (wrap) {
+                wrap.classList.remove('opacity-0'); wrap.classList.add('opacity-100');
+                document.getElementById('vibeEmoji').innerText = emoji;
+                document.getElementById('vibeTitle').innerText = titleMsg;
+                document.getElementById('vibeTitle').className = `text-[11px] font-black tracking-widest uppercase drop-shadow-sm transition-colors duration-500 ${colorClass}`;
+                
+                const pctEl = document.getElementById('vibePct');
+                let currentPct = parseInt(pctEl.innerText) || 0;
+                animateValue(pctEl, currentPct, vibePct, 1000);
+                pctEl.className = `text-xl font-black drop-shadow-md transition-colors duration-500 ${colorClass}`;
+
+                const bar = document.getElementById('vibeBar');
+                bar.style.width = `${vibePct}%`;
+                bar.className = `absolute inset-y-0 left-0 rounded-full transition-all duration-[1000ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden bg-gradient-to-r ${gradientClass}`;
+                document.getElementById('vibeAdvice').innerText = adviceMsg;
+            }
         }
 
         // Export and Utils
