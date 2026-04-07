@@ -20,188 +20,104 @@
         }
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-        :root {
-            --bg-radial: radial-gradient(circle at 50% 0%, #ffffff 0%, #e2e8f0 80%);
-            --glass-bg: rgba(255, 255, 255, 0.85);
-            --glass-border: rgba(0, 0, 0, 0.08);
-            --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1), inset 0 1px 0 0 rgba(255, 255, 255, 1);
-            --checker-bg: #f8fafc;
-            --checker-color: #e2e8f0;
-            --range-bg: rgba(0, 0, 0, 0.15);
-            --glow-opacity: 0.25;
-            --glow-blur: 40px;
-        }
-
-        .dark {
-            --bg-radial: radial-gradient(circle at 50% 0%, #1a1a24 0%, #000000 70%);
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --glass-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
-            --checker-bg: #080808;
-            --checker-color: #111111;
-            --range-bg: rgba(255, 255, 255, 0.15);
-            --glow-opacity: 0.5;
-            --glow-blur: 60px;
-        }
-
-        body {
-            background-color: #f8fafc;
-            background-image: var(--bg-radial);
-            background-attachment: fixed;
-            min-height: 100vh;
-            -webkit-font-smoothing: antialiased;
-            transition: background-color 0.6s ease, color 0.6s ease;
-        }
-
-        .dark body {
-            background-color: #000000;
-        }
-
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(40px);
-            -webkit-backdrop-filter: blur(40px);
-            border: 1px solid var(--glass-border);
-            box-shadow: var(--glass-shadow);
-            transition: background 0.6s ease, border-color 0.6s ease, box-shadow 0.6s ease;
-        }
-
-        /* --- FANCY COLOR PICKERS --- */
-        .color-picker-group {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        .color-picker-group:hover {
-            transform: translateY(-4px) scale(1.05);
-        }
-
-        .custom-color-well {
-            position: relative;
-            width: 4.5rem;
-            height: 4.5rem;
-            border-radius: 9999px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-        }
-
-        .dark .custom-color-well {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-        }
-
-        .color-picker-input {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            cursor: pointer;
-            z-index: 10;
-        }
-
-        .color-picker-visual {
-            position: absolute;
-            inset: 6px;
-            border-radius: 9999px;
-            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(0, 0, 0, 0.1);
-            transition: background-color 0.1s;
-        }
-
-        .color-glow {
-            position: absolute;
-            inset: 0;
-            border-radius: 9999px;
-            filter: blur(14px);
-            opacity: 0.6;
-            z-index: -1;
-            transition: background-color 0.1s;
-            transform: translateY(4px) scale(0.9);
-        }
-
-        /* Range Slider */
-        input[type="range"] {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 8px;
-            background: var(--range-bg);
-            border-radius: 9999px;
-            outline: none;
-            cursor: pointer;
-            transition: background 0.6s ease;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 28px;
-            width: 28px;
-            border-radius: 50%;
-            background: #ffffff;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
-            transition: transform 0.15s ease;
-        }
-
-        input[type="range"]::-webkit-slider-thumb:active {
-            transform: scale(0.85);
-        }
-
-        #ambientGlow {
-            filter: blur(var(--glow-blur));
-            opacity: var(--glow-opacity);
-            transform: scale(0.95) translateY(5%);
-            z-index: -1;
-            transition: filter 0.6s ease, opacity 0.6s ease, background 0.5s ease;
-        }
-
-        .checkerboard {
-            background-image: linear-gradient(45deg, var(--checker-color) 25%, transparent 25%),
-                linear-gradient(-45deg, var(--checker-color) 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, var(--checker-color) 75%),
-                linear-gradient(-45deg, transparent 75%, var(--checker-color) 75%);
-            background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-            background-color: var(--checker-bg);
-            transition: background-color 0.6s ease, background-image 0.6s ease;
-        }
-
-        /* Circular Preset Animation */
-        .preset-circle {
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
-        }
-
-        .preset-circle:hover {
-            transform: scale(1.15);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-            z-index: 10;
-        }
-
-        .pill-button {
-            transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-
-        .pill-button:active {
-            transform: scale(0.96);
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body
-    class="p-4 md:p-10 lg:p-12 flex flex-col items-center text-slate-900 dark:text-white transition-colors duration-500">
+    class="p-4 md:p-10 lg:p-12 flex flex-col items-center text-slate-900 dark:text-white transition-colors duration-500 overflow-x-hidden">
+
+    <!-- 3-Second Splash Screen -->
+    <div id="splashScreen"
+        class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-900 dark:bg-black transition-transform duration-700 ease-[cubic-bezier(0.8,_0,_0.2,_1)] overflow-hidden">
+        <!-- Animated Background Orbs -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div
+                class="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] rounded-full bg-purple-600/20 mix-blend-screen blur-[120px] animate-spin-slow">
+            </div>
+            <div class="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-blue-600/20 mix-blend-screen blur-[100px] animate-spin-slow"
+                style="animation-direction: reverse;"></div>
+            <div
+                class="absolute top-[30%] left-[30%] w-[40vw] h-[40vw] rounded-full bg-pink-600/20 mix-blend-screen blur-[80px] animate-pulse-fast">
+            </div>
+        </div>
+
+        <div class="relative flex items-center justify-center">
+            <div class="absolute inset-0 bg-blue-500/40 blur-[80px] rounded-full scale-150 animate-pulse-fast"></div>
+            <h1
+                class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-400 to-purple-400 animate-gradient-fast drop-shadow-[0_0_30px_rgba(99,102,241,0.6)] z-10 relative tracking-tighter">
+                TaxPOD <span
+                    class="font-light italic bg-clip-text text-transparent bg-gradient-to-r from-pink-300 to-rose-400">Gradient
+                    Studio</span>
+            </h1>
+        </div>
+        <p
+            class="mt-8 text-indigo-200 dark:text-indigo-100/80 font-bold tracking-[0.4em] uppercase text-xs md:text-sm animate-pulse-fast z-10 relative drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+            Initializing Visual Engine...</p>
+    </div>
+
+
+    <!-- Custom Fancy Color Picker Popover -->
+    <div id="colorPopover"
+        class="color-popover hidden-popover absolute z-[100] w-[280px] p-4 rounded-3xl flex flex-col gap-4">
+        <!-- Saturation/Brightness Area -->
+        <div id="sbArea" class="sb-area relative w-full h-40 rounded-2xl overflow-hidden shadow-inner touch-none">
+            <div id="sbThumb"
+                class="absolute w-5 h-5 border-[2.5px] border-white rounded-full shadow-[0_2px_10px_rgba(0,0,0,0.5)] transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10"
+                style="top: 0%; left: 100%;"></div>
+        </div>
+
+        <!-- Hue Slider Area -->
+        <div class="flex items-center gap-3">
+            <div id="eyeDropperBtn"
+                class="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center cursor-pointer transition-colors"
+                title="Pick from screen">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                    class="text-slate-700 dark:text-white/80">
+                    <path d="m2 22 1-1h3l9-9" />
+                    <path d="M3 21v-3l9-9" />
+                    <path
+                        d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z" />
+                </svg>
+            </div>
+            <div id="hueArea" class="hue-area relative flex-1 h-5 rounded-full shadow-inner touch-none">
+                <div id="hueThumb"
+                    class="absolute top-1/2 w-6 h-6 bg-white border border-slate-200 shadow-md rounded-full transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                    style="left: 50%;"></div>
+            </div>
+        </div>
+
+        <!-- Inputs Grid -->
+        <div class="flex items-center gap-2 pt-1">
+            <div class="flex flex-col flex-1">
+                <input type="text" id="popHex"
+                    class="popover-input w-full text-center text-sm font-mono font-bold text-slate-800 dark:text-white rounded-xl py-2 outline-none uppercase"
+                    value="FFFFFF">
+                <span class="text-[10px] font-bold text-slate-400 dark:text-white/40 text-center mt-1">HEX</span>
+            </div>
+            <div class="flex flex-col w-12">
+                <input type="text" id="popR"
+                    class="popover-input w-full text-center text-sm font-mono font-bold text-slate-800 dark:text-white rounded-xl py-2 outline-none"
+                    value="255">
+                <span class="text-[10px] font-bold text-slate-400 dark:text-white/40 text-center mt-1">R</span>
+            </div>
+            <div class="flex flex-col w-12">
+                <input type="text" id="popG"
+                    class="popover-input w-full text-center text-sm font-mono font-bold text-slate-800 dark:text-white rounded-xl py-2 outline-none"
+                    value="255">
+                <span class="text-[10px] font-bold text-slate-400 dark:text-white/40 text-center mt-1">G</span>
+            </div>
+            <div class="flex flex-col w-12">
+                <input type="text" id="popB"
+                    class="popover-input w-full text-center text-sm font-mono font-bold text-slate-800 dark:text-white rounded-xl py-2 outline-none"
+                    value="255">
+                <span class="text-[10px] font-bold text-slate-400 dark:text-white/40 text-center mt-1">B</span>
+            </div>
+        </div>
+    </div>
 
     <!-- Theme Toggle -->
-    <div class="fixed top-6 right-6 md:top-8 md:right-10 z-50 flex items-center gap-3">
+    <div class="fixed top-6 right-6 md:top-8 md:right-10 z-40 flex items-center gap-3">
         <span
             class="hidden md:inline-block text-sm font-bold text-slate-500 dark:text-white/50 tracking-wider uppercase transition-colors">Theme</span>
         <button id="themeToggle"
@@ -224,8 +140,8 @@
 
     <header class="mb-10 text-center w-full max-w-[1400px] relative z-10 pt-4">
         <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 transition-colors">Gradient Studio</h1>
-        <p class="text-slate-600 dark:text-white/60 text-lg font-medium transition-colors">Design professional, highly
-            readable gradients for taxPOD.</p>
+        <p class="text-slate-600 dark:text-white/60 text-lg font-medium transition-colors">Design professional, vibrant
+            gradients for taxPOD.</p>
     </header>
 
     <main class="w-full max-w-[1400px] grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 relative z-10">
@@ -281,9 +197,9 @@
                 </div>
             </div>
 
-            <!-- Descriptive, Color-Blind Friendly Contrast Alert -->
+            <!-- Single-Line Recommendation Alert -->
             <div class="mt-8 flex justify-center">
-                <div class="glass-panel inline-flex items-center gap-3 px-6 py-4 rounded-full transition-all duration-300 shadow-lg"
+                <div class="glass-panel inline-flex items-center gap-3 px-6 py-3 rounded-full transition-all duration-300 shadow-lg max-w-full overflow-hidden"
                     id="statusBadgeContainer">
                     <!-- Injected by JS -->
                 </div>
@@ -293,7 +209,7 @@
         <!-- CONTROLS SECTION (Right Side) -->
         <div class="lg:col-span-5 h-fit space-y-10 glass-panel p-8 md:p-10 rounded-[2.5rem]">
 
-            <!-- FANCY COLOR PICKERS -->
+            <!-- FANCY COLOR PICKER TRIGGERS -->
             <div>
                 <div class="flex justify-between items-end mb-6">
                     <label
@@ -312,61 +228,133 @@
                     </button>
                 </div>
 
-                <div class="flex items-center justify-between px-2">
+                <div class="flex items-start justify-between px-0 sm:px-2 gap-2">
 
                     <!-- Picker 1: PRIMARY -->
-                    <div class="color-picker-group">
+                    <div class="color-picker-group w-24">
                         <span
-                            class="text-sm font-extrabold text-slate-800 dark:text-white transition-colors mb-1">Primary</span>
-                        <div class="custom-color-well">
-                            <div class="color-glow" id="glow1"></div>
-                            <input type="color" id="color1" class="color-picker-input" value="#0f172a"
-                                title="Primary (Text Area Background)">
-                            <div class="color-picker-visual" id="visual1"></div>
+                            class="text-sm font-extrabold text-slate-800 dark:text-white transition-colors mb-2">Primary</span>
+                        <div class="custom-color-well" id="well0">
+                            <div class="color-glow" id="glow0"></div>
+                            <div class="color-picker-visual" id="visual0"></div>
                         </div>
-                        <span
-                            class="text-[11px] font-mono font-bold text-slate-500 dark:text-white/60 bg-black/5 dark:bg-white/10 px-2.5 py-1 rounded-md uppercase tracking-wider transition-colors mt-1"
-                            id="hex1">#0F172A</span>
+
+                        <!-- Apple Style Tabs -->
+                        <div class="relative flex w-full p-0.5 bg-black/5 dark:bg-white/10 rounded-lg mb-2 cursor-pointer"
+                            onclick="toggleFormat(0)">
+                            <div id="tab-bg-0"
+                                class="absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] bg-white dark:bg-slate-700 rounded-md shadow-sm transition-transform duration-200 ease-out z-0">
+                            </div>
+                            <button id="tab-hex-0"
+                                class="relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-800 dark:text-white transition-colors">HEX</button>
+                            <button id="tab-rgb-0"
+                                class="relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-500 dark:text-white/50 transition-colors">RGB</button>
+                        </div>
+
+                        <!-- Smart Input Field -->
+                        <div class="relative w-full">
+                            <input type="text" id="input0"
+                                class="color-text-input w-full text-center text-[14px] font-mono font-bold text-slate-700 dark:text-white bg-transparent border border-black/10 dark:border-white/20 rounded-lg py-1.5 pr-6 pl-2 transition-all outline-none uppercase"
+                                value="#3B82F6">
+                            <button
+                                class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-blue-500 transition-colors focus:outline-none"
+                                onclick="copyHexColor('input0')" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
-                    <svg class="w-5 h-5 text-slate-300 dark:text-white/20 transition-colors" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <svg class="w-5 h-5 text-slate-300 dark:text-white/20 transition-colors self-center -mt-6 hidden sm:block"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
 
                     <!-- Picker 2: SECONDARY -->
-                    <div class="color-picker-group">
+                    <div class="color-picker-group w-24">
                         <span
-                            class="text-sm font-bold text-slate-500 dark:text-white/60 transition-colors mb-1">Secondary</span>
-                        <div class="custom-color-well">
-                            <div class="color-glow" id="glow2"></div>
-                            <input type="color" id="color2" class="color-picker-input" value="#3b82f6"
-                                title="Secondary Color">
-                            <div class="color-picker-visual" id="visual2"></div>
+                            class="text-sm font-bold text-slate-500 dark:text-white/60 transition-colors mb-2">Secondary</span>
+                        <div class="custom-color-well" id="well1">
+                            <div class="color-glow" id="glow1"></div>
+                            <div class="color-picker-visual" id="visual1"></div>
                         </div>
-                        <span
-                            class="text-[11px] font-mono font-bold text-slate-500 dark:text-white/60 bg-black/5 dark:bg-white/10 px-2.5 py-1 rounded-md uppercase tracking-wider transition-colors mt-1"
-                            id="hex2">#3B82F6</span>
+
+                        <!-- Apple Style Tabs -->
+                        <div class="relative flex w-full p-0.5 bg-black/5 dark:bg-white/10 rounded-lg mb-2 cursor-pointer"
+                            onclick="toggleFormat(1)">
+                            <div id="tab-bg-1"
+                                class="absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] bg-white dark:bg-slate-700 rounded-md shadow-sm transition-transform duration-200 ease-out z-0">
+                            </div>
+                            <button id="tab-hex-1"
+                                class="relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-800 dark:text-white transition-colors">HEX</button>
+                            <button id="tab-rgb-1"
+                                class="relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-500 dark:text-white/50 transition-colors">RGB</button>
+                        </div>
+
+                        <!-- Smart Input Field -->
+                        <div class="relative w-full">
+                            <input type="text" id="input1"
+                                class="color-text-input w-full text-center text-[14px] font-mono font-bold text-slate-700 dark:text-white bg-transparent border border-black/10 dark:border-white/20 rounded-lg py-1.5 pr-6 pl-2 transition-all outline-none uppercase"
+                                value="#8B5CF6">
+                            <button
+                                class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-blue-500 transition-colors focus:outline-none"
+                                onclick="copyHexColor('input1')" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
-                    <svg class="w-5 h-5 text-slate-300 dark:text-white/20 transition-colors" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <svg class="w-5 h-5 text-slate-300 dark:text-white/20 transition-colors self-center -mt-6 hidden sm:block"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
 
                     <!-- Picker 3: TERTIARY -->
-                    <div class="color-picker-group">
+                    <div class="color-picker-group w-24">
                         <span
-                            class="text-sm font-bold text-slate-500 dark:text-white/60 transition-colors mb-1">Tertiary</span>
-                        <div class="custom-color-well">
-                            <div class="color-glow" id="glow3"></div>
-                            <input type="color" id="color3" class="color-picker-input" value="#10b981"
-                                title="Tertiary Color">
-                            <div class="color-picker-visual" id="visual3"></div>
+                            class="text-sm font-bold text-slate-500 dark:text-white/60 transition-colors mb-2">Tertiary</span>
+                        <div class="custom-color-well" id="well2">
+                            <div class="color-glow" id="glow2"></div>
+                            <div class="color-picker-visual" id="visual2"></div>
                         </div>
-                        <span
-                            class="text-[11px] font-mono font-bold text-slate-500 dark:text-white/60 bg-black/5 dark:bg-white/10 px-2.5 py-1 rounded-md uppercase tracking-wider transition-colors mt-1"
-                            id="hex3">#10B981</span>
+
+                        <!-- Apple Style Tabs -->
+                        <div class="relative flex w-full p-0.5 bg-black/5 dark:bg-white/10 rounded-lg mb-2 cursor-pointer"
+                            onclick="toggleFormat(2)">
+                            <div id="tab-bg-2"
+                                class="absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] bg-white dark:bg-slate-700 rounded-md shadow-sm transition-transform duration-200 ease-out z-0">
+                            </div>
+                            <button id="tab-hex-2"
+                                class="relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-800 dark:text-white transition-colors">HEX</button>
+                            <button id="tab-rgb-2"
+                                class="relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-500 dark:text-white/50 transition-colors">RGB</button>
+                        </div>
+
+                        <!-- Smart Input Field -->
+                        <div class="relative w-full">
+                            <input type="text" id="input2"
+                                class="color-text-input w-full text-center text-[14px] font-mono font-bold text-slate-700 dark:text-white bg-transparent border border-black/10 dark:border-white/20 rounded-lg py-1.5 pr-6 pl-2 transition-all outline-none uppercase"
+                                value="#D946EF">
+                            <button
+                                class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-blue-500 transition-colors focus:outline-none"
+                                onclick="copyHexColor('input2')" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                 </div>
@@ -380,7 +368,7 @@
                             <path
                                 d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
                         </svg>
-                        Smart Matches (Based on Primary)
+                        Vibrant Matches (Based on Primary)
                     </label>
                     <div id="smartSuggestions" class="flex gap-3 h-10">
                         <!-- Dynamic Pills -->
@@ -399,7 +387,7 @@
                             id="angleVal">135</span>°</span>
                 </div>
                 <div class="pt-2">
-                    <input type="range" id="angleRange" min="0" max="360" value="135">
+                    <input type="range" id="angleRange" class="main-slider" min="0" max="360" value="135">
                 </div>
             </div>
 
@@ -420,7 +408,6 @@
                     & Use</label>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <!-- Copy CSS -->
                     <button id="copyCssBtn"
                         class="pill-button w-full bg-slate-900 text-white dark:bg-white dark:text-black py-4 rounded-2xl font-bold text-sm tracking-wide shadow-lg hover:shadow-xl dark:shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:bg-slate-800 dark:hover:bg-gray-100 flex items-center justify-center gap-2 transition-all">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -431,7 +418,6 @@
                         Copy CSS Code
                     </button>
 
-                    <!-- Copy Figma Data -->
                     <button id="copyFigmaBtn"
                         class="pill-button w-full bg-black/5 dark:bg-white/10 text-slate-800 dark:text-white border border-black/10 dark:border-white/20 py-4 rounded-2xl font-bold text-sm tracking-wide shadow-sm hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center gap-2 transition-all">
                         <svg width="16" height="16" viewBox="0 0 38 57" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -460,7 +446,7 @@
 
     <!-- Toast Notification -->
     <div id="toast"
-        class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-white text-white dark:text-black px-8 py-4 rounded-full font-bold shadow-2xl z-50 flex items-center gap-3 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none">
+        class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-white text-white dark:text-black px-8 py-4 rounded-full font-bold shadow-2xl z-[200] flex items-center gap-3 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80"
             stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
@@ -468,259 +454,7 @@
         <span id="toastMsg">Copied!</span>
     </div>
 
-    <script>
-        // DOM Elements
-        const color1 = document.getElementById('color1');
-        const color2 = document.getElementById('color2');
-        const color3 = document.getElementById('color3');
-
-        const visual1 = document.getElementById('visual1');
-        const visual2 = document.getElementById('visual2');
-        const visual3 = document.getElementById('visual3');
-
-        const glow1 = document.getElementById('glow1');
-        const glow2 = document.getElementById('glow2');
-        const glow3 = document.getElementById('glow3');
-
-        const hex1 = document.getElementById('hex1');
-        const hex2 = document.getElementById('hex2');
-        const hex3 = document.getElementById('hex3');
-
-        const angleRange = document.getElementById('angleRange');
-        const angleVal = document.getElementById('angleVal');
-        const gradientLayer = document.getElementById('gradientLayer');
-        const ambientGlow = document.getElementById('ambientGlow');
-
-        const statusBadgeContainer = document.getElementById('statusBadgeContainer');
-        const randomizeBtn = document.getElementById('randomizeBtn');
-        const smartSuggestionsContainer = document.getElementById('smartSuggestions');
-        const presetGrid = document.getElementById('presetGrid');
-
-        const toast = document.getElementById('toast');
-        const toastMsg = document.getElementById('toastMsg');
-        const themeToggle = document.getElementById('themeToggle');
-        const html = document.documentElement;
-
-        let currentColorsArray = []; // Store the currently generated scale for exporting
-
-        // Theme Toggle
-        themeToggle.addEventListener('click', () => {
-            html.classList.toggle('dark');
-        });
-
-        // 1. Canva-Style Hardcoded Circular Presets (Wide variety)
-        const canvaPresets = [
-            ['#f8fafc', '#cbd5e1', '#64748b'], // Silver/White
-            ['#64748b', '#334155', '#0f172a'], // Deep Charcoal
-            ['#1e3a8a', '#312e81', '#172554'], // Midnight Blue
-            ['#b45309', '#78350f', '#451a03'], // Rich Brown
-            ['#8b5cf6', '#6366f1', '#3b82f6'], // Purple-Blue
-            ['#f472b6', '#d946ef', '#8b5cf6'], // Pink-Purple
-
-            ['#fde047', '#f97316', '#ef4444'], // Warm Sunrise
-            ['#fca5a5', '#f43f5e', '#be123c'], // Rose Red
-            ['#fb923c', '#ea580c', '#c2410c'], // Pure Orange
-            ['#a7f3d0', '#10b981', '#047857'], // Mint Green
-            ['#bae6fd', '#38bdf8', '#0284c7'], // Sky Blue
-            ['#e9d5ff', '#a855f7', '#7e22ce'], // Lavender
-
-            ['#d946ef', '#c026d3', '#a21caf'], // Magenta
-            ['#facc15', '#a3e635', '#4ade80'], // Lime Yellow
-            ['#34d399', '#059669', '#064e3b'], // Emerald Forest
-            ['#2dd4bf', '#0e7490', '#1e3a8a'], // Ocean Deep
-            ['#fbbf24', '#d97706', '#92400e'], // Golden Bronze
-            ['#f87171', '#c084fc', '#60a5fa'], // Pastel Mix
-
-            ['#ef4444', '#b91c1c', '#7f1d1d'], // Crimson Fire
-            ['#ec4899', '#be185d', '#831843'], // Deep Pink
-            ['#3b82f6', '#1d4ed8', '#1e3a8a']  // Classic Blue
-        ];
-
-        // Populate the preset grid
-        canvaPresets.forEach(colors => {
-            const btn = document.createElement('button');
-            btn.className = "preset-circle w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/40 dark:border-white/10 focus:outline-none focus:ring-4 focus:ring-blue-500/50";
-            btn.style.background = `linear-gradient(135deg, ${colors.join(', ')})`;
-            btn.onclick = () => {
-                color1.value = colors[0];
-                color2.value = colors[1];
-                color3.value = colors[2];
-                updateGradient();
-            };
-            presetGrid.appendChild(btn);
-        });
-
-
-        // Syncs custom HTML color pickers visuals
-        function syncPickerVisuals() {
-            visual1.style.backgroundColor = color1.value;
-            glow1.style.backgroundColor = color1.value;
-            hex1.innerText = color1.value.toUpperCase();
-
-            visual2.style.backgroundColor = color2.value;
-            glow2.style.backgroundColor = color2.value;
-            hex2.innerText = color2.value.toUpperCase();
-
-            visual3.style.backgroundColor = color3.value;
-            glow3.style.backgroundColor = color3.value;
-            hex3.innerText = color3.value.toUpperCase();
-        }
-
-        // Smart Matches Engine
-        function generateSmartMatches(baseHex) {
-            const base = chroma(baseHex);
-            const palettes = [
-                { name: "Vibrant", colors: [baseHex, base.set('lch.h', '+35').brighten(0.6).hex(), base.set('lch.h', '+70').brighten(1.2).hex()] },
-                { name: "Professional", colors: [baseHex, base.brighten(0.8).hex(), base.brighten(1.6).hex()] },
-                { name: "Cool Deep", colors: [baseHex, base.set('lch.h', '-30').brighten(0.5).hex(), base.set('lch.h', '-60').brighten(1).hex()] }
-            ];
-
-            smartSuggestionsContainer.innerHTML = '';
-            palettes.forEach(palette => {
-                const btn = document.createElement('button');
-                btn.className = "pill-button flex-1 rounded-xl shadow-md border border-black/10 dark:border-white/20 transition-all opacity-90 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50";
-                btn.style.background = `linear-gradient(90deg, ${palette.colors.join(', ')})`;
-                btn.title = `Apply ${palette.name} Palette`;
-
-                btn.onclick = () => {
-                    color1.value = palette.colors[0];
-                    color2.value = palette.colors[1];
-                    color3.value = palette.colors[2];
-                    updateGradient();
-                };
-                smartSuggestionsContainer.appendChild(btn);
-            });
-        }
-
-        // Determines text background color for contrast check
-        function getTopLeftColor(angle, scaleFunction) {
-            const rad = angle * Math.PI / 180;
-            const vx = Math.sin(rad);
-            const vy = -Math.cos(rad);
-            const width = 16, height = 9;
-            const corners = [{ x: -width, y: -height }, { x: width, y: -height }, { x: width, y: height }, { x: -width, y: height }];
-
-            const projections = corners.map(c => c.x * vx + c.y * vy);
-            const minP = Math.min(...projections);
-            const maxP = Math.max(...projections);
-            const topLeftP = projections[0];
-
-            const t = (topLeftP - minP) / (maxP - minP);
-            return scaleFunction(t).hex();
-        }
-
-        function updateGradient() {
-            syncPickerVisuals();
-
-            const c1 = color1.value;
-            const c2 = color2.value;
-            const c3 = color3.value;
-            const angle = parseInt(angleRange.value);
-            angleVal.innerText = angle;
-
-            const chromaScale = chroma.scale([c1, c2, c3]).mode('lch');
-            currentColorsArray = chromaScale.colors(5); // Save globally for exports
-
-            const cssGradient = `linear-gradient(${angle}deg, ${currentColorsArray.join(', ')})`;
-            gradientLayer.style.background = cssGradient;
-            ambientGlow.style.background = cssGradient;
-
-            // Assess Readability on Primary Area
-            const textBackgroundColor = getTopLeftColor(angle, chromaScale);
-            checkContrast(textBackgroundColor);
-
-            if (smartSuggestionsContainer.dataset.lastBase !== c1) {
-                generateSmartMatches(c1);
-                smartSuggestionsContainer.dataset.lastBase = c1;
-            }
-        }
-
-        // Color-Blind Friendly Readability Logic
-        function checkContrast(bgColor) {
-            const targetTextColor = '#ffffff'; // White banner text
-            const ratio = chroma.contrast(bgColor, targetTextColor).toFixed(1);
-
-            let iconSvg = '';
-            let textMsg = '';
-            let textClass = '';
-
-            if (ratio >= 4.5) {
-                // EXCELLENT (Checkmark)
-                iconSvg = `<svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-                textMsg = "Excellent (Easy to read)";
-                textClass = "text-emerald-800 dark:text-emerald-300";
-            } else if (ratio >= 3) {
-                // PASSABLE (Warning Triangle)
-                iconSvg = `<svg class="w-6 h-6 text-amber-500 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
-                textMsg = "Passable (Needs bold text)";
-                textClass = "text-amber-800 dark:text-amber-300";
-            } else {
-                // POOR (X Circle)
-                iconSvg = `<svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-                textMsg = "Poor (Hard to read)";
-                textClass = "text-red-800 dark:text-red-300";
-            }
-
-            statusBadgeContainer.innerHTML = `
-                ${iconSvg}
-                <div class="flex flex-col">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-white/50 mb-0.5">Readability Score</span>
-                    <span class="text-base font-extrabold ${textClass}">${textMsg}</span>
-                </div>
-            `;
-        }
-
-        // --- Export Functions --- //
-        function showToast(message) {
-            toastMsg.innerText = message;
-            toast.style.opacity = '1';
-            toast.style.transform = 'translate(-50%, -20px)';
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translate(-50%, 40px)';
-            }, 3000);
-        }
-
-        // Copy CSS
-        document.getElementById('copyCssBtn').addEventListener('click', () => {
-            const angle = angleRange.value;
-            const css = `background: linear-gradient(${angle}deg, ${currentColorsArray.join(', ')});`;
-            navigator.clipboard.writeText(css).then(() => {
-                showToast("CSS Code Copied!");
-            });
-        });
-
-        // Copy Figma Stops
-        document.getElementById('copyFigmaBtn').addEventListener('click', () => {
-            const angle = angleRange.value;
-            const positions = ['0%', '25%', '50%', '75%', '100%'];
-
-            let figmaText = `Figma Linear Gradient\nAngle: ${angle}°\n\nColor Stops:\n`;
-            currentColorsArray.forEach((hex, i) => {
-                figmaText += `${positions[i]} - ${hex.toUpperCase()}\n`;
-            });
-
-            navigator.clipboard.writeText(figmaText).then(() => {
-                showToast("Figma Stops Copied!");
-            });
-        });
-
-        // Listeners
-        [color1, color2, color3, angleRange].forEach(el => {
-            el.addEventListener('input', updateGradient);
-        });
-
-        randomizeBtn.addEventListener('click', () => {
-            const baseColor = chroma.random().saturate(1.5).darken(1);
-            color1.value = baseColor.hex();
-            color2.value = baseColor.set('lch.h', '+40').brighten(1).hex();
-            color3.value = baseColor.set('lch.h', '+80').brighten(2).hex();
-            updateGradient();
-        });
-
-        // Initialize App
-        updateGradient();
-    </script>
+    <script src="script.js"></script>
 </body>
 
 </html>
