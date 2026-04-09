@@ -1,612 +1,1150 @@
 // --- Core App State ---
-        const pickerState = [
-            { format: 'hex', val: '#3b82f6' },
-            { format: 'hex', val: '#8b5cf6' },
-            { format: 'hex', val: '#d946ef' }
-        ];
-        let currentColorsArray = [];
-        let activePickerId = null;
+// Each stop: { format: 'hex'|'rgb', val: '#xxxxxx' }
+let pickerState = [
+    { format: 'hex', val: '#3b82f6' },
+    { format: 'hex', val: '#8b5cf6' },
+    { format: 'hex', val: '#d946ef' }
+];
 
-        // --- Custom Picker State ---
-        let currentH = 0, currentS = 1, currentV = 1;
-        let isDraggingSB = false;
-        let isDraggingHue = false;
+let gradientType = 'linear'; // 'linear' | 'solid'
+let currentColorsArray = [];
+let activePickerId = null; // index or 'title'
 
-        // --- DOM Elements ---
-        const wells = [document.getElementById('well0'), document.getElementById('well1'), document.getElementById('well2')];
-        const visuals = [document.getElementById('visual0'), document.getElementById('visual1'), document.getElementById('visual2')];
-        const glows = [document.getElementById('glow0'), document.getElementById('glow1'), document.getElementById('glow2')];
-        const textInputs = [document.getElementById('input0'), document.getElementById('input1'), document.getElementById('input2')];
+// --- Custom Picker Drag State ---
+let currentH = 0, currentS = 1, currentV = 1;
+let isDraggingSB = false;
+let isDraggingHue = false;
 
-        const angleRange = document.getElementById('angleRange');
-        const angleVal = document.getElementById('angleVal');
-        const gradientLayer = document.getElementById('gradientLayer');
-        const ambientGlow = document.getElementById('ambientGlow');
-        const statusBadgeContainer = document.getElementById('statusBadgeContainer');
-        const smartSuggestionsContainer = document.getElementById('smartSuggestions');
+// --- DOM References (static) ---
+const angleRange = document.getElementById('angleRange');
+const angleVal = document.getElementById('angleVal');
+const gradientLayer = document.getElementById('gradientLayer');
+const ambientGlow = document.getElementById('ambientGlow');
+const smartSuggestionsContainer = document.getElementById('smartSuggestions');
+const colorStopsList = document.getElementById('colorStopsList');
+const addStopWrapper = document.getElementById('addStopWrapper');
+const smartMatchesSection = document.getElementById('smartMatchesSection');
 
-        // Custom Popover Elements
-        const colorPopover = document.getElementById('colorPopover');
-        const sbArea = document.getElementById('sbArea');
-        const sbThumb = document.getElementById('sbThumb');
-        const hueArea = document.getElementById('hueArea');
-        const hueThumb = document.getElementById('hueThumb');
-        const popHex = document.getElementById('popHex');
-        const popR = document.getElementById('popR');
-        const popG = document.getElementById('popG');
-        const popB = document.getElementById('popB');
-        const eyeDropperBtn = document.getElementById('eyeDropperBtn');
+// Custom Popover Elements
+const colorPopover = document.getElementById('colorPopover');
+const sbArea = document.getElementById('sbArea');
+const sbThumb = document.getElementById('sbThumb');
+const hueArea = document.getElementById('hueArea');
+const hueThumb = document.getElementById('hueThumb');
+const popHex = document.getElementById('popHex');
+const popR = document.getElementById('popR');
+const popG = document.getElementById('popG');
+const popB = document.getElementById('popB');
+const eyeDropperBtn = document.getElementById('eyeDropperBtn');
 
-        // Theme
-        document.getElementById('themeToggle').addEventListener('click', () => { document.documentElement.classList.toggle('dark'); });
+// Theme
+document.getElementById('themeToggle').addEventListener('click', () => { document.documentElement.classList.toggle('dark'); });
 
-        // --- Title Color Logic --- //
-        let titleColorHex = '#ffffff';
-        let titleColorFormat = 'hex';
+// --- Title Color Logic --- //
+let titleColorHex = '#ffffff';
+let titleColorFormat = 'hex';
 
-        const wellTitle = document.getElementById('wellTitle');
-        const glowTitle = document.getElementById('glowTitle');
-        const visualTitle = document.getElementById('visualTitle');
-        const inputTitle = document.getElementById('inputTitle');
-        const mainTitle = document.getElementById('mainTitle');
+const wellTitle = document.getElementById('wellTitle');
+const glowTitle = document.getElementById('glowTitle');
+const visualTitle = document.getElementById('visualTitle');
+const titleInput = document.getElementById('titleInput');
+const titleSizeRange = document.getElementById('titleSizeRange');
+const titleSizeVal = document.getElementById('titleSizeVal');
+const mainTitle = document.getElementById('mainTitle');
+const titleWrapper = document.getElementById('titleWrapper');
+const exportJpgBtn = document.getElementById('exportJpgBtn');
 
-        function syncTitleWell(hex) {
-            titleColorHex = hex;
-            visualTitle.style.backgroundColor = hex;
-            glowTitle.style.backgroundColor = hex;
-            mainTitle.style.color = hex;
-            mainTitle.classList.remove('text-white');
-            if (titleColorFormat === 'hex') {
-                inputTitle.value = hex.toUpperCase();
-            } else {
-                const [r, g, b] = chroma(hex).rgb();
-                inputTitle.value = `${r}, ${g}, ${b}`;
-            }
-            // Re-run contrast check so readability badge updates
-            const bgSample = document.getElementById('gradientLayer');
-            if (bgSample && pickerState && pickerState[0]) updateMainGradient();
-        }
+function syncTitleWell(hex) {
+    titleColorHex = hex;
+    visualTitle.style.backgroundColor = hex;
+    glowTitle.style.backgroundColor = hex;
+    mainTitle.style.color = hex;
+    mainTitle.classList.remove('text-white');
+    if (titleColorFormat === 'hex') {
+        titleInput.value = hex.toUpperCase();
+    } else {
+        const [r, g, b] = chroma(hex).rgb();
+        titleInput.value = `${r}, ${g}, ${b}`;
+    }
+    if (pickerState && pickerState[0]) updateMainGradient();
+}
 
-        window.toggleTitleFormat = function () {
-            titleColorFormat = (titleColorFormat === 'hex') ? 'rgb' : 'hex';
-            const tabBg = document.getElementById('tab-bg-title');
-            const tabHex = document.getElementById('tab-hex-title');
-            const tabRgb = document.getElementById('tab-rgb-title');
-            if (titleColorFormat === 'rgb') {
-                tabBg.style.transform = 'translateX(100%)';
-                tabRgb.className = 'relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-800 dark:text-white transition-colors';
-                tabHex.className = 'relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-500 dark:text-white/50 transition-colors';
-            } else {
-                tabBg.style.transform = 'translateX(0)';
-                tabHex.className = 'relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-800 dark:text-white transition-colors';
-                tabRgb.className = 'relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-500 dark:text-white/50 transition-colors';
-            }
-            syncTitleWell(titleColorHex);
-        };
+window.toggleTitleFormat = function () {
+    titleColorFormat = (titleColorFormat === 'hex') ? 'rgb' : 'hex';
+    const tabBg = document.getElementById('tab-bg-title');
+    const tabHex = document.getElementById('tab-hex-title');
+    const tabRgb = document.getElementById('tab-rgb-title');
+    if (titleColorFormat === 'rgb') {
+        tabBg.style.transform = 'translateX(100%)';
+        tabRgb.className = 'relative z-10 flex-1 text-[10px] font-black py-1.5 text-slate-800 dark:text-white transition-colors';
+        tabHex.className = 'relative z-10 flex-1 text-[10px] font-black py-1.5 text-slate-500 dark:text-white/40 transition-colors';
+    } else {
+        tabBg.style.transform = 'translateX(0)';
+        tabHex.className = 'relative z-10 flex-1 text-[10px] font-black py-1.5 text-slate-800 dark:text-white transition-colors';
+        tabRgb.className = 'relative z-10 flex-1 text-[10px] font-black py-1.5 text-slate-500 dark:text-white/40 transition-colors';
+    }
+    syncTitleWell(titleColorHex);
+};
 
-        inputTitle.addEventListener('change', (e) => {
-            let val = e.target.value.trim();
-            try {
-                let parsed = (titleColorFormat === 'rgb' && !val.startsWith('rgb')) ? chroma(`rgb(${val})`) : chroma(val);
-                syncTitleWell(parsed.hex());
-            } catch (err) { syncTitleWell(titleColorHex); }
-        });
+titleInput.addEventListener('change', (e) => {
+    let val = e.target.value.trim();
+    try {
+        let parsed = (titleColorFormat === 'rgb' && !val.startsWith('rgb')) ? chroma(`rgb(${val})`) : chroma(val);
+        syncTitleWell(parsed.hex());
+    } catch (err) { syncTitleWell(titleColorHex); }
+});
 
-        wellTitle.addEventListener('click', () => {
-            // Open the shared colorPopover positioned at wellTitle
-            if (activePickerId === 'title') { closePicker(); return; }
-            activePickerId = 'title';
-            const rect = wellTitle.getBoundingClientRect();
-            let leftPos = rect.left + window.scrollX - 100;
-            if (leftPos < 20) leftPos = 20;
-            colorPopover.style.top = `${rect.bottom + window.scrollY + 15}px`;
-            colorPopover.style.left = `${leftPos}px`;
-            colorPopover.classList.remove('hidden-popover');
-            const color = chroma(titleColorHex);
-            const hsv = color.hsv();
-            currentH = isNaN(hsv[0]) ? 0 : hsv[0];
-            currentS = isNaN(hsv[1]) ? 0 : hsv[1];
-            currentV = isNaN(hsv[2]) ? 0 : hsv[2];
-            updatePickerUIFromHSV();
-        });
+wellTitle.addEventListener('click', () => {
+    if (activePickerId === 'title') { closePicker(); return; }
+    activePickerId = 'title';
+    const rect = wellTitle.getBoundingClientRect();
+    let leftPos = rect.left + window.scrollX - 100;
+    if (leftPos < 20) leftPos = 20;
+    colorPopover.style.top = `${rect.bottom + window.scrollY + 15}px`;
+    colorPopover.style.left = `${leftPos}px`;
+    colorPopover.classList.remove('hidden-popover');
+    const color = chroma(titleColorHex);
+    const hsv = color.hsv();
+    currentH = isNaN(hsv[0]) ? 0 : hsv[0];
+    currentS = isNaN(hsv[1]) ? 0 : hsv[1];
+    currentV = isNaN(hsv[2]) ? 0 : hsv[2];
+    updatePickerUIFromHSV();
+});
 
-        // --- Custom Color Picker Popover Logic --- //
+// --- Close popover when clicking outside ---
+document.addEventListener('mousedown', (e) => {
+    if (!colorPopover.classList.contains('hidden-popover') &&
+        !colorPopover.contains(e.target) &&
+        !e.target.closest('.custom-color-well')) {
+        closePicker();
+    }
+});
 
-        // Close popover when clicking outside
-        document.addEventListener('mousedown', (e) => {
-            if (!colorPopover.classList.contains('hidden-popover') &&
-                !colorPopover.contains(e.target) &&
-                !wells.some(w => w.contains(e.target))) {
-                closePicker();
-            }
-        });
+// Hide EyeDropper if not supported
+if (!('EyeDropper' in window)) {
+    eyeDropperBtn.style.display = 'none';
+} else {
+    eyeDropperBtn.addEventListener('click', async () => {
+        try {
+            const dropper = new EyeDropper();
+            const result = await dropper.open();
+            updateColorFromHex(result.sRGBHex);
+        } catch (e) { console.log(e); }
+    });
+}
 
-        // Hide Eyedropper if not supported
-        if (!('EyeDropper' in window)) {
-            eyeDropperBtn.style.display = 'none';
-        } else {
-            eyeDropperBtn.addEventListener('click', async () => {
-                try {
-                    const dropper = new EyeDropper();
-                    const result = await dropper.open();
-                    updateColorFromHex(result.sRGBHex);
-                } catch (e) { console.log(e); }
-            });
-        }
+function closePicker() {
+    colorPopover.classList.add('hidden-popover');
+    activePickerId = null;
+}
 
-        // Open Picker
-        wells.forEach((well, i) => {
-            well.addEventListener('click', () => {
-                if (activePickerId === i) { closePicker(); return; }
-                activePickerId = i;
+// --- Dragging Logic for Popover SB/Hue ---
+function handleSBDraw(e) {
+    if (!isDraggingSB) return;
+    const rect = sbArea.getBoundingClientRect();
+    let x = (e.clientX || e.touches[0].clientX) - rect.left;
+    let y = (e.clientY || e.touches[0].clientY) - rect.top;
+    x = Math.max(0, Math.min(x, rect.width));
+    y = Math.max(0, Math.min(y, rect.height));
+    currentS = x / rect.width;
+    currentV = 1 - (y / rect.height);
+    updateColorFromHSV();
+}
 
-                // Position Popover directly below the clicked well
-                const rect = well.getBoundingClientRect();
-                let leftPos = rect.left + window.scrollX - 100;
-                if (leftPos < 20) leftPos = 20;
+function handleHueDraw(e) {
+    if (!isDraggingHue) return;
+    const rect = hueArea.getBoundingClientRect();
+    let x = (e.clientX || e.touches[0].clientX) - rect.left;
+    x = Math.max(0, Math.min(x, rect.width));
+    currentH = (x / rect.width) * 360;
+    updateColorFromHSV();
+}
 
-                colorPopover.style.top = `${rect.bottom + window.scrollY + 15}px`;
-                colorPopover.style.left = `${leftPos}px`;
-                colorPopover.classList.remove('hidden-popover');
+sbArea.addEventListener('mousedown', (e) => { isDraggingSB = true; handleSBDraw(e); });
+hueArea.addEventListener('mousedown', (e) => { isDraggingHue = true; handleHueDraw(e); });
+window.addEventListener('mousemove', (e) => { handleSBDraw(e); handleHueDraw(e); });
+window.addEventListener('mouseup', () => { isDraggingSB = false; isDraggingHue = false; });
 
-                // Initialize from current color
-                const color = chroma(pickerState[i].val);
-                const hsv = color.hsv();
-                currentH = isNaN(hsv[0]) ? 0 : hsv[0];
-                currentS = isNaN(hsv[1]) ? 0 : hsv[1];
-                currentV = isNaN(hsv[2]) ? 0 : hsv[2];
+sbArea.addEventListener('touchstart', (e) => { isDraggingSB = true; handleSBDraw(e); }, { passive: false });
+hueArea.addEventListener('touchstart', (e) => { isDraggingHue = true; handleHueDraw(e); }, { passive: false });
+window.addEventListener('touchmove', (e) => {
+    if (isDraggingSB || isDraggingHue) { e.preventDefault(); handleSBDraw(e); handleHueDraw(e); }
+}, { passive: false });
+window.addEventListener('touchend', () => { isDraggingSB = false; isDraggingHue = false; });
 
-                updatePickerUIFromHSV();
-            });
-        });
+function updateColorFromHSV() {
+    const hex = chroma.hsv(currentH, currentS, currentV).hex();
+    updatePickerUIFromHSV();
+    if (activePickerId === 'title') {
+        syncTitleWell(hex);
+    } else if (activePickerId !== null) {
+        pickerState[activePickerId].val = hex;
+        syncStopUI(activePickerId);
+        updateMainGradient();
+    }
+}
 
-        function closePicker() {
-            colorPopover.classList.add('hidden-popover');
-            activePickerId = null;
-        }
+function updateColorFromHex(hex) {
+    if (!chroma.valid(hex)) return;
+    const hsv = chroma(hex).hsv();
+    currentH = isNaN(hsv[0]) ? 0 : hsv[0];
+    currentS = isNaN(hsv[1]) ? 0 : hsv[1];
+    currentV = isNaN(hsv[2]) ? 0 : hsv[2];
+    updateColorFromHSV();
+}
 
-        // Dragging Logic
-        function handleSBDraw(e) {
-            if (!isDraggingSB) return;
-            const rect = sbArea.getBoundingClientRect();
-            let x = (e.clientX || e.touches[0].clientX) - rect.left;
-            let y = (e.clientY || e.touches[0].clientY) - rect.top;
+function updatePickerUIFromHSV() {
+    const pureHueHex = chroma.hsv(currentH, 1, 1).hex();
+    sbArea.style.backgroundColor = pureHueHex;
+    sbThumb.style.left = `${currentS * 100}%`;
+    sbThumb.style.top = `${(1 - currentV) * 100}%`;
+    const hueX = (currentH / 360) * 100;
+    hueThumb.style.left = `${hueX}%`;
+    const finalColor = chroma.hsv(currentH, currentS, currentV);
+    sbThumb.style.backgroundColor = finalColor.hex();
+    hueThumb.style.backgroundColor = pureHueHex;
+    const hex = finalColor.hex().replace('#', '').toUpperCase();
+    const [r, g, b] = finalColor.rgb();
+    if (document.activeElement !== popHex) popHex.value = hex;
+    if (document.activeElement !== popR) popR.value = r;
+    if (document.activeElement !== popG) popG.value = g;
+    if (document.activeElement !== popB) popB.value = b;
+}
 
-            x = Math.max(0, Math.min(x, rect.width));
-            y = Math.max(0, Math.min(y, rect.height));
+popHex.addEventListener('change', (e) => updateColorFromHex('#' + e.target.value));
+[popR, popG, popB].forEach(input => {
+    input.addEventListener('change', () => {
+        const color = chroma(popR.value, popG.value, popB.value);
+        updateColorFromHex(color.hex());
+    });
+});
 
-            currentS = x / rect.width;
-            currentV = 1 - (y / rect.height);
-            updateColorFromHSV();
-        }
+// ===================================================
+// DYNAMIC COLOR STOPS RENDERING
+// ===================================================
 
-        function handleHueDraw(e) {
-            if (!isDraggingHue) return;
-            const rect = hueArea.getBoundingClientRect();
-            let x = (e.clientX || e.touches[0].clientX) - rect.left;
-            x = Math.max(0, Math.min(x, rect.width));
+const STOP_LABELS = ['Primary', 'Secondary', 'Tertiary', 'Quaternary', 'Quinary'];
+const MAX_STOPS = 5;
+const MIN_STOPS_LINEAR = 2;
+const MIN_STOPS_SOLID = 1;
 
-            currentH = (x / rect.width) * 360;
-            updateColorFromHSV();
-        }
+function getStopLabel(i) {
+    return STOP_LABELS[i] || `Stop ${i + 1}`;
+}
 
-        // Mouse Events
-        sbArea.addEventListener('mousedown', (e) => { isDraggingSB = true; handleSBDraw(e); });
-        hueArea.addEventListener('mousedown', (e) => { isDraggingHue = true; handleHueDraw(e); });
-        window.addEventListener('mousemove', (e) => { handleSBDraw(e); handleHueDraw(e); });
-        window.addEventListener('mouseup', () => { isDraggingSB = false; isDraggingHue = false; });
+function renderColorStops() {
+    colorStopsList.innerHTML = '';
 
-        // Touch Events
-        sbArea.addEventListener('touchstart', (e) => { isDraggingSB = true; handleSBDraw(e); }, { passive: false });
-        hueArea.addEventListener('touchstart', (e) => { isDraggingHue = true; handleHueDraw(e); }, { passive: false });
-        window.addEventListener('touchmove', (e) => {
-            if (isDraggingSB || isDraggingHue) { e.preventDefault(); handleSBDraw(e); handleHueDraw(e); }
-        }, { passive: false });
-        window.addEventListener('touchend', () => { isDraggingSB = false; isDraggingHue = false; });
+    pickerState.forEach((state, idx) => {
+        const item = createStopItem(idx, state);
+        colorStopsList.appendChild(item);
+    });
 
-        // Update core logic from HSV
-        function updateColorFromHSV() {
-            const hex = chroma.hsv(currentH, currentS, currentV).hex();
-            updatePickerUIFromHSV();
+    // Manage add/remove button visibility
+    updateAddButtonVisibility();
+}
 
-            if (activePickerId === 'title') {
-                syncTitleWell(hex);
-            } else if (activePickerId !== null) {
-                pickerState[activePickerId].val = hex;
-                syncInputsAndWells(activePickerId);
-                updateMainGradient();
-            }
-        }
+function createStopItem(idx, state) {
+    const isSolid = gradientType === 'solid';
+    const minStops = isSolid ? MIN_STOPS_SOLID : MIN_STOPS_LINEAR;
+    const canRemove = pickerState.length > minStops;
 
-        function updateColorFromHex(hex) {
-            if (!chroma.valid(hex)) return;
-            const hsv = chroma(hex).hsv();
-            currentH = isNaN(hsv[0]) ? 0 : hsv[0];
-            currentS = isNaN(hsv[1]) ? 0 : hsv[1];
-            currentV = isNaN(hsv[2]) ? 0 : hsv[2];
-            updateColorFromHSV();
-        }
+    const wrapper = document.createElement('div');
+    wrapper.className = 'color-stop-item flex items-center gap-4 bg-white/5 dark:bg-white/5 p-4 rounded-3xl border border-black/5 dark:border-white/5 transition-all hover:bg-white/10 dark:hover:bg-white/10';
+    wrapper.dataset.stopIdx = idx;
 
-        function updatePickerUIFromHSV() {
-            const pureHueHex = chroma.hsv(currentH, 1, 1).hex();
-            sbArea.style.backgroundColor = pureHueHex;
+    // Color Well
+    const well = document.createElement('div');
+    well.className = 'custom-color-well flex-shrink-0';
+    well.id = `well${idx}`;
 
-            sbThumb.style.left = `${currentS * 100}%`;
-            sbThumb.style.top = `${(1 - currentV) * 100}%`;
+    const glow = document.createElement('div');
+    glow.className = 'color-glow';
+    glow.id = `glow${idx}`;
 
-            const hueX = (currentH / 360) * 100;
-            hueThumb.style.left = `${hueX}%`;
+    const visual = document.createElement('div');
+    visual.className = 'color-picker-visual';
+    visual.id = `visual${idx}`;
+    visual.style.backgroundColor = state.val;
+    glow.style.backgroundColor = state.val;
 
-            const finalColor = chroma.hsv(currentH, currentS, currentV);
-            sbThumb.style.backgroundColor = finalColor.hex();
-            hueThumb.style.backgroundColor = pureHueHex;
+    well.appendChild(glow);
+    well.appendChild(visual);
+    well.addEventListener('click', () => openStopPicker(idx));
 
-            // Update inputs inside popover
-            const hex = finalColor.hex().replace('#', '').toUpperCase();
-            const [r, g, b] = finalColor.rgb();
+    // Middle Info: Label + HEX/RGB + Input
+    const content = document.createElement('div');
+    content.className = 'flex-1 min-w-0 flex flex-col gap-2';
 
-            if (document.activeElement !== popHex) popHex.value = hex;
-            if (document.activeElement !== popR) popR.value = r;
-            if (document.activeElement !== popG) popG.value = g;
-            if (document.activeElement !== popB) popB.value = b;
-        }
+    const header = document.createElement('div');
+    header.className = 'flex justify-between items-center';
 
-        // Popover Inputs logic
-        popHex.addEventListener('change', (e) => updateColorFromHex('#' + e.target.value));
-        [popR, popG, popB].forEach(input => {
-            input.addEventListener('change', () => {
-                const color = chroma(popR.value, popG.value, popB.value);
-                updateColorFromHex(color.hex());
-            });
-        });
+    const labelEl = document.createElement('span');
+    labelEl.className = 'apple-caption';
+    labelEl.textContent = getStopLabel(idx);
+    header.appendChild(labelEl);
 
-        // --- Main UI Panel Logic --- //
+    // Mini Tabs
+    const tabRow = document.createElement('div');
+    tabRow.className = 'relative flex w-16 p-0.5 bg-black/5 dark:bg-white/10 rounded-lg cursor-pointer';
+    tabRow.onclick = () => toggleStopFormat(idx);
 
-        // Tabs Toggle Logic (Hex vs RGB)
-        window.toggleFormat = function (idx) {
-            const isHex = pickerState[idx].format === 'hex';
-            pickerState[idx].format = isHex ? 'rgb' : 'hex';
+    const tabBg = document.createElement('div');
+    tabBg.id = `tab-bg-${idx}`;
+    tabBg.className = 'absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] bg-white dark:bg-slate-600 rounded shadow-sm transition-transform duration-200 ease-out z-0';
+    if (state.format === 'rgb') tabBg.style.transform = 'translateX(100%)';
 
-            const tabBg = document.getElementById(`tab-bg-${idx}`);
-            const tabHex = document.getElementById(`tab-hex-${idx}`);
-            const tabRgb = document.getElementById(`tab-rgb-${idx}`);
+    const tabHex = document.createElement('button');
+    tabHex.id = `tab-hex-${idx}`;
+    tabHex.className = `relative z-10 flex-1 text-[8px] font-black py-0.5 transition-colors ${state.format === 'hex' ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-white/40'}`;
+    tabHex.textContent = 'HEX';
 
-            if (pickerState[idx].format === 'rgb') {
-                tabBg.style.transform = 'translateX(100%)';
-                tabRgb.className = "relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-800 dark:text-white transition-colors";
-                tabHex.className = "relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-500 dark:text-white/50 transition-colors";
-            } else {
-                tabBg.style.transform = 'translateX(0)';
-                tabHex.className = "relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-800 dark:text-white transition-colors";
-                tabRgb.className = "relative z-10 flex-1 text-[10px] font-extrabold py-1 text-slate-500 dark:text-white/50 transition-colors";
-            }
-            syncInputsAndWells(idx);
-        };
+    const tabRgb = document.createElement('button');
+    tabRgb.id = `tab-rgb-${idx}`;
+    tabRgb.className = `relative z-10 flex-1 text-[8px] font-black py-0.5 transition-colors ${state.format === 'rgb' ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-white/40'}`;
+    tabRgb.textContent = 'RGB';
 
-        // Text input directly on the panel
-        textInputs.forEach((input, idx) => {
-            input.addEventListener('change', (e) => {
-                let val = e.target.value.trim();
-                try {
-                    let parsed = (pickerState[idx].format === 'rgb' && !val.startsWith('rgb')) ? chroma(`rgb(${val})`) : chroma(val);
-                    pickerState[idx].val = parsed.hex();
-                    syncInputsAndWells(idx);
-                    updateMainGradient();
-                    if (activePickerId === idx) updateColorFromHex(parsed.hex()); // sync popup if open
-                } catch (err) { syncInputsAndWells(idx); } // revert on error
-            });
-        });
+    tabRow.appendChild(tabBg);
+    tabRow.appendChild(tabHex);
+    tabRow.appendChild(tabRgb);
+    header.appendChild(tabRow);
 
-        // Sync visual wells and text inputs
-        function syncInputsAndWells(idx) {
-            const hexVal = pickerState[idx].val;
-            visuals[idx].style.backgroundColor = hexVal;
-            glows[idx].style.backgroundColor = hexVal;
+    const inputWrap = document.createElement('div');
+    inputWrap.className = 'relative w-full';
 
-            if (pickerState[idx].format === 'hex') {
-                textInputs[idx].value = hexVal.toUpperCase();
-            } else {
-                const rgb = chroma(hexVal).rgb();
-                textInputs[idx].value = `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`;
-            }
-        }
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `input${idx}`;
+    input.className = 'w-full text-xs font-mono font-bold text-slate-700 dark:text-white bg-black/5 dark:bg-white/5 border border-transparent rounded-xl py-2 px-3 transition-all outline-none uppercase focus:bg-white dark:focus:bg-white/10 focus:border-blue-500/30';
+    input.value = state.format === 'hex' ? state.val.toUpperCase() : (() => { const [r,g,b] = chroma(state.val).rgb(); return `${r}, ${g}, ${b}`; })();
 
-        // Utility to ensure EXCELLENT readability with white text (Contrast >= 4.5)
-        function getReadable(colorHex) {
-            let c = chroma(colorHex);
-            // Lower lightness until contrast is at least 4.5 (Excellent)
-            while (chroma.contrast(c, '#ffffff') < 4.5 && c.get('lch.l') > 10) {
-                c = c.set('lch.l', c.get('lch.l') - 3);
-            }
-            return c.hex();
-        }
-
-        // Setup Canva Presets (Curated Vibrant Styles)
-        const canvaPresetsRaw = [
-            ['#fde047', '#f97316', '#ef4444'], ['#fca5a5', '#f43f5e', '#be123c'], ['#fb923c', '#ea580c', '#c2410c'],
-            ['#a7f3d0', '#10b981', '#047857'], ['#bae6fd', '#38bdf8', '#0284c7'], ['#e9d5ff', '#a855f7', '#7e22ce'],
-            ['#d946ef', '#c026d3', '#a21caf'], ['#facc15', '#a3e635', '#4ade80'], ['#34d399', '#059669', '#064e3b'],
-            ['#2dd4bf', '#0e7490', '#1e3a8a'], ['#fbbf24', '#d97706', '#92400e'], ['#f87171', '#c084fc', '#60a5fa'],
-            ['#ef4444', '#b91c1c', '#7f1d1d'], ['#ec4899', '#be185d', '#831843'], ['#3b82f6', '#1d4ed8', '#1e3a8a'],
-            ['#8b5cf6', '#6366f1', '#3b82f6'], ['#f472b6', '#d946ef', '#8b5cf6'], ['#14b8a6', '#0ea5e9', '#3b82f6']
-        ];
-
-        // Process all presets to guarantee excellent readability
-        const canvaPresets = canvaPresetsRaw.map(group => group.map(getReadable));
-
-        canvaPresets.forEach(colors => {
-            const btn = document.createElement('button');
-            btn.className = "preset-circle w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/40 dark:border-white/10 focus:outline-none focus:ring-4 focus:ring-blue-500/50 shadow-md";
-            btn.style.background = `linear-gradient(135deg, ${colors.join(', ')})`;
-            btn.onclick = () => setGlobalColors(colors[0], colors[1], colors[2]);
-            presetGrid.appendChild(btn);
-        });
-
-        // Vibrant Smart Matches
-        function generateSmartMatches(baseHex) {
-            const base = chroma(baseHex);
-
-            // Reuses the globally scoped getReadable logic
-            const safeBase = getReadable(baseHex);
-
-            const palettes = [
-                { name: "Analogous Pop", colors: [safeBase, getReadable(base.set('lch.h', '+45').set('lch.c', 100)), getReadable(base.set('lch.h', '+90').set('lch.c', 100))] },
-                { name: "Deep Glow", colors: [safeBase, getReadable(base.set('lch.h', '+25').darken(0.5)), getReadable(base.set('lch.h', '+50').darken(1))] },
-                { name: "Cool Shift", colors: [safeBase, getReadable(base.set('lch.h', '-45').set('lch.c', 100)), getReadable(base.set('lch.h', '-90').set('lch.c', 100))] }
-            ];
-
-            smartSuggestionsContainer.innerHTML = '';
-            palettes.forEach(palette => {
-                const btn = document.createElement('button');
-                btn.className = "pill-button flex-1 rounded-xl shadow-md border border-black/10 dark:border-white/20 transition-all opacity-90 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50";
-                btn.style.background = `linear-gradient(90deg, ${palette.colors.join(', ')})`;
-                btn.title = `Apply ${palette.name} Palette`;
-                btn.onclick = () => setGlobalColors(palette.colors[0], palette.colors[1], palette.colors[2]);
-                smartSuggestionsContainer.appendChild(btn);
-            });
-        }
-
-        // Main Rendering Logic
-        function setGlobalColors(c1, c2, c3) {
-            pickerState[0].val = c1; syncInputsAndWells(0);
-            pickerState[1].val = c2; syncInputsAndWells(1);
-            pickerState[2].val = c3; syncInputsAndWells(2);
+    input.addEventListener('change', (e) => {
+        let val = e.target.value.trim();
+        try {
+            let parsed = (pickerState[idx].format === 'rgb' && !val.startsWith('rgb')) ? chroma(`rgb(${val})`) : chroma(val);
+            pickerState[idx].val = parsed.hex();
+            syncStopUI(idx);
             updateMainGradient();
+            if (activePickerId === idx) updateColorFromHex(parsed.hex());
+        } catch (err) { syncStopUI(idx); }
+    });
+
+    inputWrap.appendChild(input);
+
+    content.appendChild(header);
+    content.appendChild(inputWrap);
+
+    wrapper.appendChild(well);
+    wrapper.appendChild(content);
+
+    // Remove Button
+    if (canRemove) {
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-2xl bg-red-500/5 hover:bg-red-500/10 text-red-500/40 hover:text-red-500 transition-all active:scale-90';
+        removeBtn.title = 'Remove Stop';
+        removeBtn.onclick = () => removeColorStop(idx);
+        removeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
+        wrapper.appendChild(removeBtn);
+    }
+
+    return wrapper;
+}
+
+function openStopPicker(idx) {
+    if (activePickerId === idx) { closePicker(); return; }
+    activePickerId = idx;
+
+    const well = document.getElementById(`well${idx}`);
+    const rect = well.getBoundingClientRect();
+    let leftPos = rect.left + window.scrollX - 100;
+    if (leftPos < 20) leftPos = 20;
+    if (leftPos + 280 > window.innerWidth - 20) leftPos = window.innerWidth - 300;
+
+    colorPopover.style.top = `${rect.bottom + window.scrollY + 15}px`;
+    colorPopover.style.left = `${leftPos}px`;
+    colorPopover.classList.remove('hidden-popover');
+
+    const color = chroma(pickerState[idx].val);
+    const hsv = color.hsv();
+    currentH = isNaN(hsv[0]) ? 0 : hsv[0];
+    currentS = isNaN(hsv[1]) ? 0 : hsv[1];
+    currentV = isNaN(hsv[2]) ? 0 : hsv[2];
+    updatePickerUIFromHSV();
+}
+
+function syncStopUI(idx) {
+    const state = pickerState[idx];
+    const visual = document.getElementById(`visual${idx}`);
+    const glow = document.getElementById(`glow${idx}`);
+    const input = document.getElementById(`input${idx}`);
+    if (visual) visual.style.backgroundColor = state.val;
+    if (glow) glow.style.backgroundColor = state.val;
+    if (input) {
+        if (state.format === 'hex') {
+            input.value = state.val.toUpperCase();
+        } else {
+            const [r, g, b] = chroma(state.val).rgb();
+            input.value = `${r}, ${g}, ${b}`;
         }
+    }
+}
 
-        function updateMainGradient() {
-            const angle = parseInt(angleRange.value);
-            angleVal.innerText = angle;
+function toggleStopFormat(idx) {
+    const state = pickerState[idx];
+    state.format = state.format === 'hex' ? 'rgb' : 'hex';
 
-            const chromaScale = chroma.scale([pickerState[0].val, pickerState[1].val, pickerState[2].val]).mode('lch');
-            currentColorsArray = chromaScale.colors(5);
+    const tabBg = document.getElementById(`tab-bg-${idx}`);
+    const tabHex = document.getElementById(`tab-hex-${idx}`);
+    const tabRgb = document.getElementById(`tab-rgb-${idx}`);
+    if (!tabBg) return;
 
-            const cssGradient = `linear-gradient(${angle}deg, ${currentColorsArray.join(', ')})`;
-            gradientLayer.style.background = cssGradient;
-            ambientGlow.style.background = cssGradient;
+    if (state.format === 'rgb') {
+        tabBg.style.transform = 'translateX(100%)';
+        tabRgb.className = 'relative z-10 flex-1 text-[8px] font-black py-0.5 text-slate-800 dark:text-white transition-colors';
+        tabHex.className = 'relative z-10 flex-1 text-[8px] font-black py-0.5 text-slate-500 dark:text-white/40 transition-colors';
+    } else {
+        tabBg.style.transform = 'translateX(0)';
+        tabHex.className = 'relative z-10 flex-1 text-[8px] font-black py-0.5 text-slate-800 dark:text-white transition-colors';
+        tabRgb.className = 'relative z-10 flex-1 text-[8px] font-black py-0.5 text-slate-500 dark:text-white/40 transition-colors';
+    }
+    syncStopUI(idx);
+}
 
-            const textBackgroundColor = getBackgroundSamplePoint(angle, chromaScale);
-            checkContrast(textBackgroundColor);
-            checkHarmony(pickerState[0].val, pickerState[1].val, pickerState[2].val);
+// Keep toggleFormat as a global alias for backwards compatibility
+window.toggleFormat = toggleStopFormat;
 
-            if (smartSuggestionsContainer.dataset.lastBase !== pickerState[0].val) {
-                generateSmartMatches(pickerState[0].val);
-                smartSuggestionsContainer.dataset.lastBase = pickerState[0].val;
-            }
-        }
-
-        function getBackgroundSamplePoint(angle, scaleFunction) {
-            const rad = angle * Math.PI / 180;
-            const vx = Math.sin(rad);
-            const vy = -Math.cos(rad);
-            
-            // Sample at 15% from left and 20% from top (approx where title text starts)
-            const sampleX = -11.2; // -16 + (32 * 0.15)
-            const sampleY = -5.4;  // -9 + (18 * 0.20)
-            
-            const corners = [{ x: -16, y: -9 }, { x: 16, y: -9 }, { x: 16, y: 9 }, { x: -16, y: 9 }];
-            const projections = corners.map(c => c.x * vx + c.y * vy);
-            const minP = Math.min(...projections);
-            const maxP = Math.max(...projections);
-            
-            const sampleP = sampleX * vx + sampleY * vy;
-            const t = (sampleP - minP) / (maxP - minP);
-            return scaleFunction(Math.max(0, Math.min(1, t))).hex();
-        }
-
-        function animateValue(obj, start, end, duration) {
-            let startTimestamp = null;
-            const step = (timestamp) => {
-                if (!startTimestamp) startTimestamp = timestamp;
-                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                obj.innerText = Math.floor(progress * (end - start) + start) + '%';
-                if (progress < 1) window.requestAnimationFrame(step);
-            };
-            window.requestAnimationFrame(step);
-        }
-
-        // Contrast Logic — compares the title text color vs the gradient background
-        function checkContrast(bgColor) {
-            const textColor = (typeof titleColorHex !== 'undefined') ? titleColorHex : '#ffffff';
-            const ratio = parseFloat(chroma.contrast(bgColor, textColor).toFixed(1));
-            
-            // Smoother, more nuanced 5-tier scale for better "fairness"
-            let ratioScale;
-            if (ratio >= 7) {
-                ratioScale = 100; // AAA Pass
-            } else if (ratio >= 4.5) {
-                ratioScale = 90 + ((ratio - 4.5) / 2.5) * 10; // AA Pass
-            } else if (ratio >= 3) {
-                ratioScale = 65 + ((ratio - 3) / 1.5) * 25; // Large Text Pass (Title)
-            } else if (ratio >= 1.5) {
-                ratioScale = 20 + ((ratio - 1.5) / 1.5) * 45; // Poor Color
-            } else {
-                ratioScale = ((ratio - 1) / 0.5) * 20; // Blindness zone
-            }
-            
-            ratioScale = Math.round(Math.max(0, Math.min(100, ratioScale)));
-            
-            let emoji, titleMsg, adviceMsg, colorClass, gradientClass;
-
-            if (ratioScale >= 95) {
-                emoji = "😎"; titleMsg = "Readability"; adviceMsg = "Perfect clarity! Eyes say thanks. ✨";
-                colorClass = "text-emerald-700 dark:text-emerald-300"; gradientClass = "from-emerald-400 to-teal-500";
-            } else if (ratioScale >= 80) {
-                emoji = "🧐"; titleMsg = "Readability"; adviceMsg = "Looking sharp! My eyes are happy. 💖";
-                colorClass = "text-emerald-600 dark:text-emerald-400"; gradientClass = "from-emerald-300 to-teal-400";
-            } else if (ratioScale >= 60) {
-                emoji = "🤓"; titleMsg = "Readability"; adviceMsg = "Decent, but maybe go bolder? 💅";
-                colorClass = "text-amber-600 dark:text-amber-400"; gradientClass = "from-amber-400 to-orange-500";
-            } else if (ratioScale >= 30) {
-                emoji = "😵‍Z"; titleMsg = "Readability"; adviceMsg = "Getting tough! Squint mode ON. 🫠"; // Z for fix
-                emoji = "😵‍💫"; // Fix
-                colorClass = "text-orange-600 dark:text-orange-400"; gradientClass = "from-orange-500 to-rose-500";
-            } else {
-                emoji = "😵"; titleMsg = "Readability"; adviceMsg = "Visual chaos! Help me see! 🆘";
-                colorClass = "text-red-600 dark:text-red-400"; gradientClass = "from-red-500 to-rose-600";
-            }
-
-            const wrap = document.getElementById('contrastDisplayWrap');
-            if (wrap) {
-                wrap.classList.remove('opacity-0'); wrap.classList.add('opacity-100');
-                document.getElementById('contrastEmoji').innerText = emoji;
-                document.getElementById('contrastTitle').innerText = titleMsg;
-                document.getElementById('contrastTitle').className = `text-[11px] font-black tracking-widest uppercase drop-shadow-sm transition-colors duration-500 ${colorClass}`;
-                
-                const pctEl = document.getElementById('contrastPct');
-                let currentPct = parseInt(pctEl.innerText) || 0;
-                animateValue(pctEl, currentPct, ratioScale, 1000);
-                pctEl.className = `text-xl font-black drop-shadow-md transition-colors duration-500 ${colorClass}`;
-
-                const bar = document.getElementById('contrastBar');
-                bar.style.width = `${ratioScale}%`;
-                bar.className = `absolute inset-y-0 left-0 rounded-full transition-all duration-[1000ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden bg-gradient-to-r ${gradientClass}`;
-                document.getElementById('contrastAdvice').innerText = adviceMsg;
-            }
-        }
-
-        // Harmony Logic
-        function checkHarmony(c1, c2, c3) {
-            let h1 = chroma(c1).get('lch.h');
-            let h2 = chroma(c2).get('lch.h');
-            let h3 = chroma(c3).get('lch.h');
-
-            h1 = isNaN(h1) ? 0 : h1;
-            h2 = isNaN(h2) ? 0 : h2;
-            h3 = isNaN(h3) ? 0 : h3;
-
-            const hues = [h1, h2, h3].sort((a, b) => a - b);
-            const d1 = hues[1] - hues[0];
-            const d2 = hues[2] - hues[1];
-            const d3 = (360 - hues[2]) + hues[0]; 
-            
-            const maxDist = Math.max(d1, d2, d3);
-
-            // Algorithm to determine % Vibe Check mathematically
-            let vibePct = 0;
-            if (maxDist >= 260) {
-                // Analogous clusters (very smooth)
-                vibePct = Math.min(100, Math.floor(90 + (maxDist - 260) / 10));
-            } else if (maxDist <= 150) {
-                // Triadic spread (very vibrant)
-                const diff = Math.abs(maxDist - 120);
-                vibePct = Math.max(90, 100 - diff); 
-            } else {
-                // Complementary split / middle gap
-                const diff = Math.abs(maxDist - 205);
-                vibePct = Math.floor(40 + (diff / 55) * 49);
-            }
-
-            let emoji, titleMsg, adviceMsg, colorClass, gradientClass;
-
-            if (vibePct >= 90) {
-                emoji = "✨"; titleMsg = "Vibe Check"; adviceMsg = "Absolute masterpiece. It slays.";
-                colorClass = "text-fuchsia-600 dark:text-fuchsia-400"; gradientClass = "from-fuchsia-400 to-purple-500";
-            } else if (vibePct >= 60) {
-                emoji = "💅"; titleMsg = "Vibe Check"; adviceMsg = "Kinda quirky, but we vibe with it.";
-                colorClass = "text-blue-600 dark:text-blue-400"; gradientClass = "from-blue-400 to-indigo-500";
-            } else {
-                emoji = "🫠"; titleMsg = "Vibe Check"; adviceMsg = "A chaotic aesthetic choice.";
-                colorClass = "text-rose-600 dark:text-rose-400"; gradientClass = "from-pink-500 to-rose-500";
-            }
-
-            const wrap = document.getElementById('vibeDisplayWrap');
-            if (wrap) {
-                wrap.classList.remove('opacity-0'); wrap.classList.add('opacity-100');
-                document.getElementById('vibeEmoji').innerText = emoji;
-                document.getElementById('vibeTitle').innerText = titleMsg;
-                document.getElementById('vibeTitle').className = `text-[11px] font-black tracking-widest uppercase drop-shadow-sm transition-colors duration-500 ${colorClass}`;
-                
-                const pctEl = document.getElementById('vibePct');
-                let currentPct = parseInt(pctEl.innerText) || 0;
-                animateValue(pctEl, currentPct, vibePct, 1000);
-                pctEl.className = `text-xl font-black drop-shadow-md transition-colors duration-500 ${colorClass}`;
-
-                const bar = document.getElementById('vibeBar');
-                bar.style.width = `${vibePct}%`;
-                bar.className = `absolute inset-y-0 left-0 rounded-full transition-all duration-[1000ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden bg-gradient-to-r ${gradientClass}`;
-                document.getElementById('vibeAdvice').innerText = adviceMsg;
-            }
-        }
-
-        // Export and Utils
-        function showToast(msg) {
-            document.getElementById('toastMsg').innerText = msg;
-            const t = document.getElementById('toast');
-            t.style.opacity = '1'; t.style.transform = 'translate(-50%, -20px)';
-            setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%, 40px)'; }, 3000);
-        }
-
-        document.getElementById('copyCssBtn').addEventListener('click', () => {
-            navigator.clipboard.writeText(`background: linear-gradient(${angleRange.value}deg, ${currentColorsArray.join(', ')});`).then(() => showToast("CSS Code Copied!"));
+window.addColorStop = function () {
+    if (pickerState.length >= MAX_STOPS) {
+        showToast(`Max ${MAX_STOPS} color stops!`);
+        return;
+    }
+    // Generate a new color based on the last stop, shifted hue
+    const lastHex = pickerState[pickerState.length - 1].val;
+    const newHex = getReadable(chroma(lastHex).set('lch.h', '+40').saturate(0.5).hex());
+    pickerState.push({ format: 'hex', val: newHex });
+    renderColorStops();
+    updateMainGradient();
+    // Animate the new item
+    const newItem = colorStopsList.lastElementChild;
+    if (newItem) {
+        newItem.style.opacity = '0';
+        newItem.style.transform = 'translateY(8px)';
+        requestAnimationFrame(() => {
+            newItem.style.transition = 'opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            newItem.style.opacity = '1';
+            newItem.style.transform = 'translateY(0)';
         });
+    }
+};
 
-        document.getElementById('copyFigmaBtn').addEventListener('click', () => {
-            let figmaText = `Figma Linear Gradient\nAngle: ${angleRange.value}°\n\nColor Stops:\n`;
-            ['0%', '25%', '50%', '75%', '100%'].forEach((p, i) => { figmaText += `${p} - ${currentColorsArray[i].toUpperCase()}\n`; });
-            navigator.clipboard.writeText(figmaText).then(() => showToast("Figma Stops Copied!"));
-        });
+window.removeColorStop = function (idx) {
+    const minStops = gradientType === 'solid' ? MIN_STOPS_SOLID : MIN_STOPS_LINEAR;
+    if (pickerState.length <= minStops) return;
 
-        document.getElementById('randomizeBtn').addEventListener('click', () => {
-            // New Vibrant Randomizer Logic
-            // LCH Math: Force Lightness (55-75) avoids black/dullness. Force Chroma (80-100) ensures extreme vibrancy. Random Hue (0-360)
-            const l = 55 + Math.random() * 20;
-            const c = 80 + Math.random() * 20;
-            const h = Math.random() * 360;
-            const baseColor = chroma.lch(l, c, h);
+    // If active picker is being removed or is above idx, close/adjust
+    if (activePickerId === idx) closePicker();
+    else if (typeof activePickerId === 'number' && activePickerId > idx) activePickerId--;
 
-            setGlobalColors(
-                getReadable(baseColor.hex()),
-                getReadable(baseColor.set('lch.h', '+45').set('lch.c', 100).hex()),
-                getReadable(baseColor.set('lch.h', '+90').set('lch.c', 100).hex())
-            );
-        });
+    pickerState.splice(idx, 1);
+    renderColorStops();
+    updateMainGradient();
+};
 
-        angleRange.addEventListener('input', updateMainGradient);
+function updateAddButtonVisibility() {
+    const isSolid = gradientType === 'solid';
+    if (addStopWrapper) {
+        addStopWrapper.style.display = (isSolid || pickerState.length >= MAX_STOPS) ? 'none' : '';
+    }
+    if (smartMatchesSection) {
+        smartMatchesSection.style.display = isSolid ? 'none' : '';
+    }
+}
 
-        // Init
-        setGlobalColors('#3b82f6', '#8b5cf6', '#d946ef');
-        syncTitleWell('#ffffff'); // Initialize title color well to white
+// ===================================================
+// GRADIENT TYPE TOGGLE
+// ===================================================
 
+window.setGradientType = function (type) {
+    gradientType = type;
 
-        // Splash Screen Logic
-        window.addEventListener('load', () => {
-            const splash = document.getElementById('splashScreen');
-            if (splash) {
-                setTimeout(() => {
-                    splash.style.transform = 'translateY(-100%)';
-                    setTimeout(() => {
-                        splash.style.display = 'none';
-                    }, 800); // Wait for transform transition finish
-                }, 2500); // Wait 2.5 seconds before swiping up
+    const tab = document.getElementById('gradientTypeTab');
+    const btnLinear = document.getElementById('btnLinearGradient');
+    const btnSolid = document.getElementById('btnSolidColor');
+
+    if (type === 'solid') {
+        tab.style.transform = 'translateX(calc(100% + 4px))';
+        btnLinearGradient.className = 'relative z-10 flex-1 flex items-center justify-center gap-2 text-[10px] font-black py-2.5 text-slate-500 dark:text-white/40 transition-colors rounded-xl';
+        btnSolidColor.className = 'relative z-10 flex-1 flex items-center justify-center gap-2 text-[10px] font-black py-2.5 text-slate-800 dark:text-white transition-colors rounded-xl';
+        // Trim to 1 stop
+        if (pickerState.length > 1) {
+            pickerState = [pickerState[0]];
+        }
+        // Hide angle slider section
+        const angleSection = angleRange ? angleRange.closest('div.mt-8') : null;
+        if (angleSection) angleSection.style.display = 'none';
+    } else {
+        tab.style.transform = 'translateX(0)';
+        btnLinearGradient.className = 'relative z-10 flex-1 flex items-center justify-center gap-2 text-[10px] font-black py-2.5 text-slate-800 dark:text-white transition-colors rounded-xl';
+        btnSolidColor.className = 'relative z-10 flex-1 flex items-center justify-center gap-2 text-[10px] font-black py-2.5 text-slate-500 dark:text-white/40 transition-colors rounded-xl';
+        // Restore to at least 2 stops if switching back from solid
+        if (pickerState.length < MIN_STOPS_LINEAR) {
+            const base = pickerState[0].val;
+            pickerState.push({ format: 'hex', val: getReadable(chroma(base).set('lch.h', '+60').hex()) });
+        }
+        // Show angle slider section
+        const angleSection = angleRange ? angleRange.closest('div.mt-8') : null;
+        if (angleSection) angleSection.style.display = '';
+    }
+
+    renderColorStops();
+    updateMainGradient();
+};
+
+// ===================================================
+// MAIN RENDERING LOGIC
+// ===================================================
+
+// Utility to ensure EXCELLENT readability with white text (Contrast >= 4.5)
+function getReadable(colorHex) {
+    let c;
+    try { c = chroma(colorHex); } catch (e) { return colorHex; }
+    while (chroma.contrast(c, '#ffffff') < 4.5 && c.get('lch.l') > 10) {
+        c = c.set('lch.l', c.get('lch.l') - 3);
+    }
+    return c.hex();
+}
+
+function setGlobalColors(...colors) {
+    // Clamp to max stops
+    const clamped = colors.slice(0, MAX_STOPS);
+    pickerState = clamped.map(c => ({ format: 'hex', val: c }));
+    renderColorStops();
+    updateMainGradient();
+}
+
+function updateMainGradient() {
+    const angle = parseInt(angleRange.value);
+    angleVal.innerText = angle;
+
+    if (gradientType === 'solid') {
+        const solidColor = pickerState[0].val;
+        gradientLayer.style.background = solidColor;
+        ambientGlow.style.background = solidColor;
+        currentColorsArray = [solidColor];
+        checkContrast(solidColor);
+        checkHarmony(solidColor, solidColor, solidColor);
+    } else {
+        const vals = pickerState.map(s => s.val);
+        let chromaScale;
+        if (vals.length === 1) {
+            chromaScale = chroma.scale([vals[0], vals[0]]).mode('lch');
+        } else {
+            chromaScale = chroma.scale(vals).mode('lch');
+        }
+        currentColorsArray = chromaScale.colors(Math.max(5, vals.length));
+        const cssGradient = `linear-gradient(${angle}deg, ${currentColorsArray.join(', ')})`;
+        gradientLayer.style.background = cssGradient;
+        ambientGlow.style.background = cssGradient;
+
+        const textBackgroundColor = getBackgroundSamplePoint(angle, chromaScale);
+        checkContrast(textBackgroundColor);
+        checkHarmony(vals[0], vals[Math.floor(vals.length / 2)], vals[vals.length - 1]);
+
+        if (smartSuggestionsContainer.dataset.lastBase !== vals[0] || smartSuggestionsContainer.dataset.lastCount !== String(vals.length)) {
+            generateSmartMatches(vals[0]);
+            smartSuggestionsContainer.dataset.lastBase = vals[0];
+            smartSuggestionsContainer.dataset.lastCount = String(vals.length);
+        }
+    }
+}
+
+function getBackgroundSamplePoint(angle, scaleFunction) {
+    const rad = angle * Math.PI / 180;
+    const vx = Math.sin(rad);
+    const vy = -Math.cos(rad);
+    const sampleX = -11.2;
+    const sampleY = -5.4;
+    const corners = [{ x: -16, y: -9 }, { x: 16, y: -9 }, { x: 16, y: 9 }, { x: -16, y: 9 }];
+    const projections = corners.map(c => c.x * vx + c.y * vy);
+    const minP = Math.min(...projections);
+    const maxP = Math.max(...projections);
+    const sampleP = sampleX * vx + sampleY * vy;
+    const t = (sampleP - minP) / (maxP - minP);
+    return scaleFunction(Math.max(0, Math.min(1, t))).hex();
+}
+
+function animateValue(obj, start, end, duration) {
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        obj.innerText = Math.floor(progress * (end - start) + start) + '%';
+        if (progress < 1) window.requestAnimationFrame(step);
+    };
+    window.requestAnimationFrame(step);
+}
+
+function checkContrast(bgColor) {
+    const textColor = (typeof titleColorHex !== 'undefined') ? titleColorHex : '#ffffff';
+    const ratio = parseFloat(chroma.contrast(bgColor, textColor).toFixed(3));
+    let ratioScale;
+    if (ratio >= 7) { ratioScale = 95 + ((ratio - 7) / 14) * 5; }
+    else if (ratio >= 4.5) { ratioScale = 80 + ((ratio - 4.5) / 2.5) * 15; }
+    else if (ratio >= 3) { ratioScale = 60 + ((ratio - 3) / 1.5) * 20; }
+    else if (ratio >= 1.5) { ratioScale = 30 + ((ratio - 1.5) / 1.5) * 30; }
+    else { ratioScale = ((ratio - 1) / 0.5) * 30; }
+    ratioScale = Math.round(Math.max(0, Math.min(100, ratioScale)));
+    let emoji, titleMsg, adviceMsg, colorClass, gradientClass;
+    if (ratioScale >= 95) { emoji = "😎"; titleMsg = "Retina Gold"; adviceMsg = "Crystal clear. Even your grandma could read this."; colorClass = "text-emerald-700 dark:text-emerald-300"; gradientClass = "from-emerald-400 to-teal-500"; }
+    else if (ratioScale >= 80) { emoji = "🧐"; titleMsg = "Pro Status"; adviceMsg = "Clean, crisp, and professional. We love to see it."; colorClass = "text-emerald-600 dark:text-emerald-400"; gradientClass = "from-emerald-300 to-teal-400"; }
+    else if (ratioScale >= 60) { emoji = "🤓"; titleMsg = "Just Fine"; adviceMsg = "It works, but don't expect a design award."; colorClass = "text-amber-600 dark:text-amber-400"; gradientClass = "from-amber-400 to-orange-500"; }
+    else if (ratioScale >= 30) { emoji = "🫠"; titleMsg = "Squint City"; adviceMsg = "Are you trying to hide a secret message?"; colorClass = "text-orange-600 dark:text-orange-400"; gradientClass = "from-orange-500 to-rose-500"; }
+    else { emoji = "🗑️"; titleMsg = "Visual War Crime"; adviceMsg = "Absolute trash and zero visibility. Actually impressive how bad this is."; colorClass = "text-red-600 dark:text-red-400"; gradientClass = "from-red-500 to-rose-600"; }
+    const wrap = document.getElementById('contrastDisplayWrap');
+    if (wrap) {
+        wrap.classList.remove('opacity-0'); wrap.classList.add('opacity-100');
+        document.getElementById('contrastEmoji').innerText = emoji;
+        document.getElementById('contrastTitle').innerText = titleMsg;
+        document.getElementById('contrastTitle').className = `text-xs font-bold tracking-tight transition-colors duration-500 uppercase ${colorClass}`;
+        const pctEl = document.getElementById('contrastPct');
+        let currentPct = parseInt(pctEl.innerText) || 0;
+        animateValue(pctEl, currentPct, ratioScale, 1000);
+        pctEl.className = `score-display transition-colors duration-500 ${colorClass}`;
+        const bar = document.getElementById('contrastBar');
+        bar.style.width = `${ratioScale}%`;
+        bar.className = `progress-bar-fill bg-gradient-to-r ${gradientClass}`;
+        document.getElementById('contrastAdvice').innerText = adviceMsg;
+    }
+}
+
+function checkHarmony(c1, c2, c3) {
+    let h1 = chroma(c1).get('lch.h');
+    let h2 = chroma(c2).get('lch.h');
+    let h3 = chroma(c3).get('lch.h');
+    h1 = isNaN(h1) ? 0 : h1;
+    h2 = isNaN(h2) ? 0 : h2;
+    h3 = isNaN(h3) ? 0 : h3;
+    const hues = [h1, h2, h3].sort((a, b) => a - b);
+    const d1 = hues[1] - hues[0];
+    const d2 = hues[2] - hues[1];
+    const d3 = (360 - hues[2]) + hues[0];
+    const maxDist = Math.max(d1, d2, d3);
+    let vibePct = 0;
+    if (maxDist >= 260) { vibePct = Math.min(100, Math.floor(90 + (maxDist - 260) / 10)); }
+    else if (maxDist <= 150) { const diff = Math.abs(maxDist - 120); vibePct = Math.max(90, 100 - diff); }
+    else { const diff = Math.abs(maxDist - 205); vibePct = Math.floor(35 + (diff / 55) * 54); }
+    let emoji, titleMsg, adviceMsg, colorClass, gradientClass;
+    if (vibePct >= 90) { emoji = "✨"; titleMsg = "Vibe Lord"; adviceMsg = "This is a straight up mood. Absolute fire."; colorClass = "text-fuchsia-600 dark:text-fuchsia-400"; gradientClass = "from-fuchsia-400 to-purple-500"; }
+    else if (vibePct >= 65) { emoji = "💅"; titleMsg = "Decent Energy"; adviceMsg = "It's giving 'I know what I'm doing' vibes."; colorClass = "text-blue-600 dark:text-blue-400"; gradientClass = "from-blue-400 to-indigo-500"; }
+    else if (vibePct >= 40) { emoji = "🤨"; titleMsg = "Chaotic Neutral"; adviceMsg = "It's... unique? Let's call it 'Experimental'."; colorClass = "text-amber-600 dark:text-amber-400"; gradientClass = "from-amber-400 to-orange-500"; }
+    else { emoji = "🗑️"; titleMsg = "Literal Dog Water"; adviceMsg = "This combination is a mess. My eyes are offended."; colorClass = "text-rose-600 dark:text-rose-400"; gradientClass = "from-pink-500 to-rose-500"; }
+    const wrap = document.getElementById('vibeDisplayWrap');
+    if (wrap) {
+        wrap.classList.remove('opacity-0'); wrap.classList.add('opacity-100');
+        document.getElementById('vibeEmoji').innerText = emoji;
+        document.getElementById('vibeTitle').innerText = titleMsg;
+        document.getElementById('vibeTitle').className = `text-xs font-bold tracking-tight transition-colors duration-500 uppercase ${colorClass}`;
+        const pctEl = document.getElementById('vibePct');
+        let currentPct = parseInt(pctEl.innerText) || 0;
+        animateValue(pctEl, currentPct, vibePct, 1000);
+        pctEl.className = `score-display transition-colors duration-500 ${colorClass}`;
+        const bar = document.getElementById('vibeBar');
+        bar.style.width = `${vibePct}%`;
+        bar.className = `progress-bar-fill bg-gradient-to-r ${gradientClass}`;
+        document.getElementById('vibeAdvice').innerText = adviceMsg;
+    }
+}
+
+// ===================================================
+// SMART MATCHES
+// ===================================================
+
+function generateSmartMatches(baseHex) {
+    const base = chroma(baseHex);
+    const count = pickerState.length;
+    
+    const getAdaptivePalette = (profile) => {
+        let colors = [];
+        for (let i = 0; i < count; i++) {
+            let c;
+            const t = i / (Math.max(1, count - 1)); // 0 to 1
+            
+            if (profile === 'analogous') {
+                // Spread hue by 25-40 degrees each step
+                c = base.set('lch.h', `+${t * 90}`).set('lch.c', 90 + (t * 10));
+            } else if (profile === 'deep') {
+                // Darken and shift hue slightly
+                c = base.set('lch.h', `+${t * 40}`).darken(t * 1.2);
+            } else {
+                // Cool Shift: Shift hue backwards
+                c = base.set('lch.h', `-${t * 90}`).set('lch.c', 90 + (t * 10));
             }
-        });
+            colors.push(getReadable(c.hex()));
+        }
+        return colors;
+    };
 
-        window.copyHexColor = function(inputId) {
-            const input = document.getElementById(inputId);
-            if(input) {
-                navigator.clipboard.writeText(input.value).then(() => {
-                    showToast(input.value + " Copied!");
-                });
-            }
+    const palettes = [
+        { name: "Analogous Pop", colors: getAdaptivePalette('analogous') },
+        { name: "Deep Glow", colors: getAdaptivePalette('deep') },
+        { name: "Cool Shift", colors: getAdaptivePalette('cool') }
+    ];
+
+    smartSuggestionsContainer.innerHTML = '';
+    palettes.forEach(palette => {
+        const btn = document.createElement('button');
+        btn.className = "flex-1 rounded-2xl shadow-sm border border-black/5 dark:border-white/10 transition-all opacity-90 hover:opacity-100 hover:scale-[1.02] active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500/50 neon-breath";
+        btn.style.background = `linear-gradient(90deg, ${palette.colors.join(', ')})`;
+        btn.title = `Apply ${palette.name} Palette (${count} colors)`;
+        btn.onclick = () => setGlobalColors(...palette.colors);
+        smartSuggestionsContainer.appendChild(btn);
+    });
+}
+
+// ===================================================
+// PRESETS
+// ===================================================
+
+const canvaPresetsRaw = [
+    ['#fde047', '#f97316', '#ef4444'], ['#fca5a5', '#f43f5e', '#be123c'], ['#fb923c', '#ea580c', '#c2410c'],
+    ['#a7f3d0', '#10b981', '#047857'], ['#bae6fd', '#38bdf8', '#0284c7'], ['#e9d5ff', '#a855f7', '#7e22ce'],
+    ['#d946ef', '#c026d3', '#a21caf'], ['#facc15', '#a3e635', '#4ade80'], ['#34d399', '#059669', '#064e3b'],
+    ['#2dd4bf', '#0e7490', '#1e3a8a'], ['#fbbf24', '#d97706', '#92400e'], ['#f87171', '#c084fc', '#60a5fa'],
+    ['#ef4444', '#b91c1c', '#7f1d1d'], ['#ec4899', '#be185d', '#831843'], ['#3b82f6', '#1d4ed8', '#1e3a8a'],
+    ['#8b5cf6', '#6366f1', '#3b82f6'], ['#f472b6', '#d946ef', '#8b5cf6'], ['#14b8a6', '#0ea5e9', '#3b82f6']
+];
+const canvaPresets = canvaPresetsRaw.map(group => group.map(getReadable));
+const presetGrid = document.getElementById('presetGrid');
+canvaPresets.forEach(colors => {
+    const btn = document.createElement('button');
+    btn.className = "w-10 h-10 rounded-full border border-black/10 dark:border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-sm transition-all hover:scale-110 active:scale-90";
+    btn.style.background = `linear-gradient(135deg, ${colors.join(', ')})`;
+    btn.onclick = () => {
+        if (gradientType === 'solid') setGradientType('linear');
+        setGlobalColors(colors[0], colors[1], colors[2]);
+    };
+    presetGrid.appendChild(btn);
+});
+
+// ===================================================
+// EXPORT & UTILITIES
+// ===================================================
+
+function updateTitleFromInput() {
+    if (mainTitle && titleInput) {
+        mainTitle.innerText = titleInput.value;
+    }
+}
+
+// Sync contenteditable back to input
+if (mainTitle) {
+    mainTitle.addEventListener('input', () => {
+        if (titleInput) titleInput.value = mainTitle.innerText;
+    });
+}
+
+function updateTitleSize() {
+    if (mainTitle && titleSizeRange && titleSizeVal) {
+        const size = titleSizeRange.value;
+        mainTitle.style.fontSize = `${size}px`;
+        titleSizeVal.innerText = size;
+    }
+}
+
+if (titleInput) titleInput.addEventListener('input', updateTitleFromInput);
+if (titleSizeRange) titleSizeRange.addEventListener('input', updateTitleSize);
+
+function exportJPG() {
+    const preview = document.getElementById('previewContainer');
+    if (!preview) return;
+
+    showToast("Preparing Ultra-High Res Export...");
+
+    // 1. Stabilization & Cleanup for Export
+    preview.classList.add('is-exporting');
+    const originalRadius = preview.style.borderRadius;
+    const originalShadow = preview.style.boxShadow;
+    const originalTransform = preview.style.transform;
+    
+    // De-focus and clean handles
+    if (document.activeElement) document.activeElement.blur();
+    
+    preview.style.borderRadius = '0';
+    preview.style.boxShadow = 'none';
+    preview.style.transform = 'none'; // Prevent translate-induced blur
+
+    // Wait a frame for DOM to settle
+    setTimeout(() => {
+        html2canvas(preview, {
+            scale: 4, // 4x Resolution Upgrade
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: null,
+            logging: false,
+            width: preview.offsetWidth,
+            height: preview.offsetHeight
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `taxpod-pro-banner-${Date.now()}.jpg`;
+            link.href = canvas.toDataURL('image/jpeg', 1.0); // Max Quality
+            link.click();
+            
+            // Restore
+            preview.classList.remove('is-exporting');
+            preview.style.borderRadius = originalRadius;
+            preview.style.boxShadow = originalShadow;
+            preview.style.transform = originalTransform;
+            showToast("Success! Studio Quality JPG Exported.");
+        }).catch(err => {
+            console.error("Export Error:", err);
+            showToast("Export failed. Please check console.");
+            preview.classList.remove('is-exporting');
+            preview.style.borderRadius = originalRadius;
+            preview.style.boxShadow = originalShadow;
+        });
+    }, 100);
+}
+
+if (exportJpgBtn) exportJpgBtn.addEventListener('click', exportJPG);
+
+function showToast(msg) {
+    document.getElementById('toastMsg').innerText = msg;
+    const t = document.getElementById('toast');
+    t.style.opacity = '1'; t.style.transform = 'translate(-50%, -20px)';
+    setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%, 40px)'; }, 3000);
+}
+
+document.getElementById('copyCssBtn').addEventListener('click', () => {
+    let cssText;
+    if (gradientType === 'solid') {
+        cssText = `background: ${pickerState[0].val};`;
+    } else {
+        cssText = `background: linear-gradient(${angleRange.value}deg, ${currentColorsArray.join(', ')});`;
+    }
+    navigator.clipboard.writeText(cssText).then(() => showToast("CSS Code Copied!"));
+});
+
+document.getElementById('copyFigmaBtn').addEventListener('click', () => {
+    let figmaText;
+    if (gradientType === 'solid') {
+        figmaText = `Figma Solid Color\n${pickerState[0].val.toUpperCase()}`;
+    } else {
+        figmaText = `Figma Linear Gradient\nAngle: ${angleRange.value}°\n\nColor Stops:\n`;
+        const stops = currentColorsArray;
+        stops.forEach((c, i) => { figmaText += `${Math.round((i / (stops.length - 1)) * 100)}% - ${c.toUpperCase()}\n`; });
+    }
+    navigator.clipboard.writeText(figmaText).then(() => showToast("Figma Stops Copied!"));
+});
+
+let hasShownShortcutHint = false;
+
+function randomizeGradient() {
+    const profiles = ['analogous', 'complementary', 'triadic', 'tonal'];
+    const chosenProfile = profiles[Math.floor(Math.random() * profiles.length)];
+    const l = 55 + Math.random() * 20;
+    const c = 80 + Math.random() * 20;
+    const h = Math.random() * 360;
+    const baseColor = chroma.lch(l, c, h);
+    let colors = [];
+    switch (chosenProfile) {
+        case 'analogous': colors = [baseColor.hex(), baseColor.set('lch.h', '+30').hex(), baseColor.set('lch.h', '+60').hex()]; break;
+        case 'complementary': colors = [baseColor.hex(), baseColor.set('lch.h', '+180').set('lch.c', '-30').hex(), baseColor.set('lch.h', '+20').hex()]; break;
+        case 'triadic': colors = [baseColor.hex(), baseColor.set('lch.h', '+120').set('lch.l', '-10').hex(), baseColor.set('lch.h', '+240').set('lch.l', '+10').hex()]; break;
+        case 'tonal': colors = [baseColor.hex(), baseColor.set('lch.c', '-40').set('lch.l', '-20').hex(), baseColor.set('lch.c', '+10').set('lch.l', '+15').hex()]; break;
+    }
+    const finalColors = colors.map(clk => getReadable(clk));
+
+    // Maintain current number of stops when randomizing
+    if (gradientType === 'solid') {
+        setGlobalColors(finalColors[0]);
+    } else {
+        const currentCount = pickerState.length;
+        const toUse = finalColors.slice(0, currentCount);
+        // Pad if needed
+        while (toUse.length < currentCount) {
+            const last = chroma(toUse[toUse.length - 1]);
+            toUse.push(getReadable(last.set('lch.h', '+30').hex()));
+        }
+        setGlobalColors(...toUse);
+    }
+
+    const preview = document.getElementById('previewContainer');
+    if (preview) {
+        preview.style.transform = 'scale(0.99)';
+        setTimeout(() => { preview.style.transform = 'scale(1)'; }, 150);
+    }
+}
+
+document.getElementById('randomizeBtn').addEventListener('click', () => {
+    randomizeGradient();
+    if (!hasShownShortcutHint) {
+        const hint = document.getElementById('shortcutHint');
+        if (hint) {
+            hint.classList.replace('opacity-0', 'opacity-100');
+            hint.classList.replace('scale-75', 'scale-100');
+            hint.classList.replace('-top-16', '-top-20');
+            setTimeout(() => {
+                hint.classList.replace('opacity-100', 'opacity-0');
+                hint.classList.replace('scale-100', 'scale-75');
+                hint.classList.replace('-top-20', '-top-16');
+            }, 4000);
+        }
+        hasShownShortcutHint = true;
+    }
+});
+
+document.getElementById('previewContainer').addEventListener('click', (e) => {
+    // Randomization on banner click disabled to prevent accidents while editing text
+});
+
+// ===================================================
+// SUBJECT UPLOAD & DRAGGING & SCALING
+// ===================================================
+const subjectUpload = document.getElementById('subjectUpload');
+const uploadTrigger = document.getElementById('uploadTrigger');
+const resetSubject = document.getElementById('resetSubject');
+const subjectWrapper = document.getElementById('subjectWrapper');
+const subjectImage = document.getElementById('subjectImage');
+const subjectPlaceholder = document.getElementById('subjectPlaceholder');
+const scaleControlGroup = document.getElementById('scaleControlGroup');
+const subjectScaleRange = document.getElementById('subjectScaleRange');
+const subjectScaleVal = document.getElementById('subjectScaleVal');
+const resizeHandle = document.getElementById('resizeHandle');
+
+let isDraggingSubject = false;
+let isResizingSubject = false;
+let isDraggingTitle = false;
+let subjectX = 0;
+let subjectY = 0;
+let titleX = 0;
+let titleY = 0;
+let subjectScale = 1;
+let startX, startY, startScale, startWidth;
+let startTitleX, startTitleY;
+
+uploadTrigger.addEventListener('click', () => subjectUpload.click());
+
+subjectUpload.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            subjectImage.src = event.target.result;
+            subjectImage.classList.remove('hidden');
+            subjectPlaceholder.classList.add('hidden');
+            if (dragHint) dragHint.classList.remove('hidden');
+            if (scaleControlGroup) scaleControlGroup.classList.remove('hidden');
+            showToast("Subject Uploaded! Try dragging or scaling it.");
+            subjectX = 0; subjectY = 0; subjectScale = 1;
+            if (subjectScaleRange) subjectScaleRange.value = 100;
+            if (subjectScaleVal) subjectScaleVal.innerText = "100";
+            updateSubjectTransform();
         };
+        reader.readAsDataURL(file);
+    }
+});
+
+resetSubject.addEventListener('click', () => {
+    subjectImage.classList.add('hidden');
+    subjectImage.src = "";
+    subjectPlaceholder.classList.remove('hidden');
+    if (dragHint) dragHint.classList.add('hidden');
+    if (scaleControlGroup) scaleControlGroup.classList.add('hidden');
+    subjectUpload.value = ''; // Fix for selecting same image again
+    subjectX = 0; subjectY = 0; subjectScale = 1;
+    updateSubjectTransform();
+    showToast("Subject Reset");
+});
+
+subjectScaleRange.addEventListener('input', (e) => {
+    const val = e.target.value;
+    subjectScaleVal.innerText = val;
+    subjectScale = val / 100;
+    updateSubjectTransform();
+});
+
+function startResize(e) {
+    isResizingSubject = true;
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const rect = subjectWrapper.getBoundingClientRect();
+    startX = clientX;
+    startScale = subjectScale;
+    startWidth = rect.width;
+    e.stopPropagation();
+    e.preventDefault();
+}
+
+function startDrag(e) {
+    if (isResizingSubject) return;
+    isDraggingSubject = true;
+    subjectWrapper.classList.add('is-dragging');
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    startX = clientX - subjectX;
+    startY = clientY - subjectY;
+    e.stopPropagation();
+}
+
+function updateInteract(e) {
+    if (isResizingSubject) {
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const deltaX = clientX - startX;
+        const newScale = startScale * (1 + deltaX / startWidth);
+        subjectScale = Math.max(0.1, Math.min(3, newScale));
+        
+        // Sync with UI
+        if (subjectScaleRange) subjectScaleRange.value = Math.round(subjectScale * 100);
+        if (subjectScaleVal) subjectScaleVal.innerText = Math.round(subjectScale * 100);
+        
+        updateSubjectTransform();
+    } else if (isDraggingSubject) {
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        subjectX = clientX - startX;
+        subjectY = clientY - startY;
+        updateSubjectTransform();
+    }
+}
+
+function stopInteract() {
+    isDraggingSubject = false;
+    isResizingSubject = false;
+    subjectWrapper.classList.remove('is-dragging');
+}
+
+function updateSubjectTransform() {
+    subjectWrapper.style.transform = `translate(${subjectX}px, ${subjectY}px) scale(${subjectScale})`;
+}
+
+// Title Dragging Logic
+function startTitleDrag(e) {
+    if (e.target.contentEditable === 'true' && document.activeElement === e.target) return;
+    if (isResizingSubject || isDraggingSubject) return;
+    
+    isDraggingTitle = true;
+    titleWrapper.classList.add('is-dragging-title');
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    startTitleX = clientX - titleX;
+    startTitleY = clientY - titleY;
+    e.stopPropagation();
+}
+
+function updateTitleDrag(e) {
+    if (!isDraggingTitle) return;
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    titleX = clientX - startTitleX;
+    titleY = clientY - startTitleY;
+    updateTitleTransform();
+}
+
+function updateTitleTransform() {
+    titleWrapper.style.transform = `translate(${titleX}px, ${titleY}px)`;
+}
+
+resizeHandle.addEventListener('mousedown', startResize);
+resizeHandle.addEventListener('touchstart', startResize, { passive: false });
+subjectWrapper.addEventListener('mousedown', startDrag);
+subjectWrapper.addEventListener('touchstart', startDrag, { passive: false });
+titleWrapper.addEventListener('mousedown', startTitleDrag);
+titleWrapper.addEventListener('touchstart', startTitleDrag, { passive: false });
+
+window.addEventListener('mousemove', (e) => {
+    updateInteract(e);
+    updateTitleDrag(e);
+});
+window.addEventListener('touchmove', (e) => {
+    updateInteract(e);
+    updateTitleDrag(e);
+}, { passive: false });
+
+window.addEventListener('mouseup', () => {
+    stopInteract();
+    isDraggingTitle = false;
+    titleWrapper.classList.remove('is-dragging-title');
+});
+window.addEventListener('touchend', () => {
+    stopInteract();
+    isDraggingTitle = false;
+    titleWrapper.classList.remove('is-dragging-title');
+});
+
+// ===================================================
+// KEYBOARD SHORTCUTS
+// ===================================================
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        randomizeGradient();
+    }
+});
+
+angleRange.addEventListener('input', updateMainGradient);
+
+// ===================================================
+// INIT
+// ===================================================
+renderColorStops();
+setGlobalColors('#3b82f6', '#8b5cf6', '#d946ef');
+syncTitleWell('#ffffff');
+
+// Splash Screen Logic
+window.addEventListener('load', () => {
+    const splash = document.getElementById('splashScreen');
+    if (splash) {
+        setTimeout(() => {
+            splash.style.transform = 'translateY(-100%)';
+            setTimeout(() => {
+                splash.style.display = 'none';
+                setTimeout(openOnboarding, 400);
+            }, 800);
+        }, 2500);
+    }
+});
+
+window.setTitleWeight = function(weight, btn) {
+    if (mainTitle) {
+        mainTitle.style.fontWeight = weight;
+        
+        // UI Sync
+        const container = btn.parentElement;
+        container.querySelectorAll('button').forEach(b => {
+            b.classList.remove('bg-white', 'dark:bg-white/10', 'text-slate-900', 'dark:text-white', 'shadow-sm');
+            b.classList.add('text-slate-500', 'dark:text-white/40');
+        });
+        
+        btn.classList.add('bg-white', 'dark:bg-white/10', 'text-slate-900', 'dark:text-white', 'shadow-sm');
+        btn.classList.remove('text-slate-500', 'dark:text-white/40');
+    }
+};
+
+// Onboarding Modal Logic
+window.openOnboarding = function () {
+    const modal = document.getElementById('onboardingModal');
+    const overlay = document.getElementById('modalOverlay');
+    const content = document.getElementById('modalContent');
+    modal.classList.remove('hidden');
+    modal.offsetHeight;
+    overlay.classList.add('opacity-100');
+    content.classList.add('opacity-100', 'scale-100');
+    content.classList.remove('scale-95');
+};
+
+window.closeOnboarding = function () {
+    const modal = document.getElementById('onboardingModal');
+    const overlay = document.getElementById('modalOverlay');
+    const content = document.getElementById('modalContent');
+    overlay.classList.remove('opacity-100');
+    content.classList.remove('opacity-100', 'scale-100');
+    content.classList.add('scale-95');
+    setTimeout(() => { modal.classList.add('hidden'); }, 500);
+};
+
+window.copyHexColor = function (inputId) {
+    const input = document.getElementById(inputId);
+    if (input) {
+        navigator.clipboard.writeText(input.value).then(() => {
+            showToast(input.value + " Copied!");
+        });
+    }
+};
