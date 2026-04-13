@@ -52,7 +52,38 @@ const titleSizeRange = document.getElementById('titleSizeRange');
 const titleSizeVal = document.getElementById('titleSizeVal');
 const mainTitle = document.getElementById('mainTitle');
 const titleWrapper = document.getElementById('titleWrapper');
+const previewContainer = document.getElementById('previewContainer');
+const exportPngBtn = document.getElementById('exportPngBtn');
 const exportJpgBtn = document.getElementById('exportJpgBtn');
+const toolbarPanelHost = document.getElementById('toolbarPanelHost');
+const sizePanelBtn = document.getElementById('sizePanelBtn');
+const textPanelBtn = document.getElementById('textPanelBtn');
+const assetPanelBtn = document.getElementById('assetPanelBtn');
+const sizePanel = document.getElementById('sizePanel');
+const textPanel = document.getElementById('textPanel');
+const assetPanel = document.getElementById('assetPanel');
+const bannerPresetBtn = document.getElementById('bannerPresetBtn');
+const bannerPresetBtnLabel = document.getElementById('bannerPresetBtnLabel');
+const bannerPresetMenu = document.getElementById('bannerPresetMenu');
+const bannerWidthInput = document.getElementById('bannerWidthInput');
+const bannerHeightInput = document.getElementById('bannerHeightInput');
+const bannerSizeLabel = document.getElementById('bannerSizeLabel');
+const bannerSizeCloud = document.getElementById('bannerSizeCloud');
+
+const BANNER_PRESETS = [
+    { label: 'Wide HD', width: 1600, height: 900 },
+    { label: 'Full HD', width: 1920, height: 1080 },
+    { label: 'Header', width: 1500, height: 500 },
+    { label: 'Social Ad', width: 1200, height: 628 },
+    { label: 'Compact', width: 1024, height: 576 }
+];
+
+const bannerState = {
+    width: 1600,
+    height: 900,
+    preset: '1600x900'
+};
+let bannerSizeCloudTimer = null;
 
 function syncTitleWell(hex) {
     titleColorHex = hex;
@@ -67,6 +98,188 @@ function syncTitleWell(hex) {
         titleInput.value = `${r}, ${g}, ${b}`;
     }
     if (pickerState && pickerState[0]) updateMainGradient();
+}
+
+function clampDimension(value, fallback, min, max) {
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed)) return fallback;
+    return Math.min(max, Math.max(min, parsed));
+}
+
+function showBannerSizeCloud(message) {
+    if (!bannerSizeCloud) return;
+    bannerSizeCloud.textContent = message;
+    bannerSizeCloud.classList.remove('hidden');
+    clearTimeout(bannerSizeCloudTimer);
+    bannerSizeCloudTimer = setTimeout(() => {
+        bannerSizeCloud.classList.add('hidden');
+    }, 2600);
+}
+
+function validateBannerDimensionInput(input, label, fallbackValue) {
+    if (!input) {
+        return { value: fallbackValue, valid: true };
+    }
+
+    const min = parseInt(input.min, 10);
+    const max = parseInt(input.max, 10);
+    const rawValue = input.value.trim();
+    const parsed = parseInt(rawValue, 10);
+
+    if (rawValue === '' || Number.isNaN(parsed)) {
+        input.value = String(fallbackValue);
+        showBannerSizeCloud(`${label} must be a number between ${min}px and ${max}px.`);
+        return { value: fallbackValue, valid: false };
+    }
+
+    if (parsed < min || parsed > max) {
+        const clamped = Math.min(max, Math.max(min, parsed));
+        input.value = String(clamped);
+        showBannerSizeCloud(`${label} must stay between ${min}px and ${max}px.`);
+        return { value: clamped, valid: false };
+    }
+
+    input.value = String(parsed);
+    return { value: parsed, valid: true };
+}
+
+function syncBannerPresetControl() {
+    if (!bannerPresetBtn || !bannerPresetMenu) return;
+    const match = BANNER_PRESETS.find(p => p.width === bannerState.width && p.height === bannerState.height);
+    bannerState.preset = match ? `${match.width}x${match.height}` : 'custom';
+    updateBannerPresetUI();
+}
+
+function updateBannerSizeLabel() {
+    if (bannerSizeLabel) {
+        bannerSizeLabel.innerText = `${bannerState.width} x ${bannerState.height} px`;
+    }
+}
+
+function updateBannerPresetUI() {
+    if (!bannerPresetBtnLabel || !bannerPresetMenu) return;
+
+    const preset = bannerState.preset;
+    const presetBtnText = (() => {
+        if (preset === 'custom') return 'Custom Size';
+        const found = BANNER_PRESETS.find(p => `${p.width}x${p.height}` === preset);
+        if (!found) return 'Custom Size';
+        return `${found.label} ${found.width} x ${found.height}`;
+    })();
+
+    bannerPresetBtnLabel.innerText = presetBtnText;
+    bannerPresetMenu.querySelectorAll('.fancy-dropdown-item').forEach(el => {
+        const val = el.getAttribute('data-value');
+        el.classList.toggle('is-selected', val === preset);
+    });
+}
+
+function applyBannerSize(width, height, syncPreset = true) {
+    bannerState.width = clampDimension(width, bannerState.width, 320, 7680);
+    bannerState.height = clampDimension(height, bannerState.height, 180, 4320);
+
+    if (bannerWidthInput) bannerWidthInput.value = bannerState.width;
+    if (bannerHeightInput) bannerHeightInput.value = bannerState.height;
+    if (previewContainer) {
+        previewContainer.style.aspectRatio = `${bannerState.width} / ${bannerState.height}`;
+    }
+
+    updateBannerSizeLabel();
+    if (syncPreset) syncBannerPresetControl();
+}
+
+function setPresetBannerSize(value) {
+    if (value === 'custom') {
+        bannerState.preset = 'custom';
+        updateBannerPresetUI();
+        return;
+    }
+    const [width, height] = value.split('x').map(Number);
+    bannerState.preset = value;
+    applyBannerSize(width, height, true);
+}
+
+function setCustomBannerDimension() {
+    const widthResult = validateBannerDimensionInput(bannerWidthInput, 'Width', bannerState.width);
+    const heightResult = validateBannerDimensionInput(bannerHeightInput, 'Height', bannerState.height);
+    const width = widthResult.value;
+    const height = heightResult.value;
+    applyBannerSize(width, height, true);
+}
+
+function openBannerPresetMenu() {
+    if (!bannerPresetBtn || !bannerPresetMenu) return;
+    bannerPresetBtn.classList.add('is-open');
+    bannerPresetMenu.classList.remove('hidden');
+}
+
+function closeBannerPresetMenu() {
+    if (!bannerPresetBtn || !bannerPresetMenu) return;
+    bannerPresetBtn.classList.remove('is-open');
+    bannerPresetMenu.classList.add('hidden');
+}
+
+function toggleBannerPresetMenu() {
+    if (!bannerPresetMenu) return;
+    const isHidden = bannerPresetMenu.classList.contains('hidden');
+    if (isHidden) openBannerPresetMenu();
+    else closeBannerPresetMenu();
+}
+
+function stepBannerDimension(which, dir, evt) {
+    const input = which === 'bannerHeight' ? bannerHeightInput : bannerWidthInput;
+    if (!input) return;
+
+    const baseStep = 10;
+    const step = (evt && evt.altKey) ? 1 : (evt && evt.shiftKey) ? 50 : baseStep;
+    const delta = dir === 'down' ? -step : step;
+
+    const current = clampDimension(input.value, which === 'bannerHeight' ? bannerState.height : bannerState.width, 1, 100000);
+    input.value = String(current + delta);
+    setCustomBannerDimension();
+}
+
+function setActiveToolbarPanel(panelName) {
+    const panelMap = {
+        size: sizePanel,
+        text: textPanel,
+        asset: assetPanel
+    };
+    const btnMap = {
+        size: sizePanelBtn,
+        text: textPanelBtn,
+        asset: assetPanelBtn
+    };
+
+    const isClosing = !panelName || !panelMap[panelName] || !panelMap[panelName].classList.contains('hidden') === false ? false : false;
+    Object.entries(panelMap).forEach(([key, panel]) => {
+        if (!panel) return;
+        panel.classList.toggle('hidden', key !== panelName);
+    });
+    Object.entries(btnMap).forEach(([key, btn]) => {
+        if (!btn) return;
+        btn.classList.toggle('is-active', key === panelName);
+    });
+
+    if (!toolbarPanelHost) return;
+    const shouldShow = Boolean(panelName);
+    toolbarPanelHost.classList.toggle('hidden', !shouldShow);
+    if (!shouldShow) closeBannerPresetMenu();
+}
+
+function toggleToolbarPanel(panelName) {
+    const panelMap = {
+        size: sizePanel,
+        text: textPanel,
+        asset: assetPanel
+    };
+    const panel = panelMap[panelName];
+    if (!panel) return;
+    if (!panel.classList.contains('hidden')) {
+        setActiveToolbarPanel(null);
+        return;
+    }
+    setActiveToolbarPanel(panelName);
 }
 
 window.toggleTitleFormat = function () {
@@ -754,58 +967,92 @@ function updateTitleSize() {
 if (titleInput) titleInput.addEventListener('input', updateTitleFromInput);
 if (titleSizeRange) titleSizeRange.addEventListener('input', updateTitleSize);
 
-function exportJPG() {
-    const preview = document.getElementById('previewContainer');
+window.setTitleAlign = function (align, btn) {
+    if (!mainTitle || !titleWrapper) return;
+
+    mainTitle.style.textAlign = align;
+    titleWrapper.dataset.align = align;
+
+    const container = btn.parentElement;
+    if (!container) return;
+
+    container.querySelectorAll('button').forEach(b => {
+        b.classList.remove('bg-white', 'dark:bg-white/10', 'text-slate-900', 'dark:text-white', 'shadow-sm');
+        b.classList.add('text-slate-500', 'dark:text-white/40');
+    });
+
+    btn.classList.add('bg-white', 'dark:bg-white/10', 'text-slate-900', 'dark:text-white', 'shadow-sm');
+    btn.classList.remove('text-slate-500', 'dark:text-white/40');
+};
+
+async function exportBanner(format) {
+    const preview = previewContainer;
     if (!preview) return;
 
-    showToast("Preparing Ultra-High Res Export...");
+    const targetWidth = bannerState.width;
+    const targetHeight = bannerState.height;
+    const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+    const extension = format === 'png' ? 'png' : 'jpg';
+    const quality = format === 'png' ? undefined : 1.0;
+    const exportScale = targetWidth / preview.offsetWidth;
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = targetWidth;
+    exportCanvas.height = targetHeight;
 
-    // 1. Stabilization & Cleanup for Export
+    showToast(`Preparing ${targetWidth} x ${targetHeight} ${format.toUpperCase()} export...`);
+
     preview.classList.add('is-exporting');
     const originalRadius = preview.style.borderRadius;
     const originalShadow = preview.style.boxShadow;
     const originalTransform = preview.style.transform;
-    
-    // De-focus and clean handles
+
     if (document.activeElement) document.activeElement.blur();
-    
     preview.style.borderRadius = '0';
     preview.style.boxShadow = 'none';
-    preview.style.transform = 'none'; // Prevent translate-induced blur
+    preview.style.transform = 'none';
 
-    // Wait a frame for DOM to settle
-    setTimeout(() => {
-        html2canvas(preview, {
-            scale: 4, // 4x Resolution Upgrade
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    try {
+        const canvas = await html2canvas(preview, {
+            canvas: exportCanvas,
+            scale: exportScale,
             useCORS: true,
             allowTaint: true,
             backgroundColor: null,
             logging: false,
             width: preview.offsetWidth,
-            height: preview.offsetHeight
-        }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = `taxpod-pro-banner-${Date.now()}.jpg`;
-            link.href = canvas.toDataURL('image/jpeg', 1.0); // Max Quality
-            link.click();
-            
-            // Restore
-            preview.classList.remove('is-exporting');
-            preview.style.borderRadius = originalRadius;
-            preview.style.boxShadow = originalShadow;
-            preview.style.transform = originalTransform;
-            showToast("Success! Studio Quality JPG Exported.");
-        }).catch(err => {
-            console.error("Export Error:", err);
-            showToast("Export failed. Please check console.");
-            preview.classList.remove('is-exporting');
-            preview.style.borderRadius = originalRadius;
-            preview.style.boxShadow = originalShadow;
+            height: preview.offsetHeight,
+            windowWidth: document.documentElement.scrollWidth,
+            windowHeight: document.documentElement.scrollHeight
         });
-    }, 100);
+
+        const link = document.createElement('a');
+        link.download = `taxpod-pro-banner-${Date.now()}.${extension}`;
+        link.href = quality ? canvas.toDataURL(mimeType, quality) : canvas.toDataURL(mimeType);
+        link.click();
+        showToast(`Exported ${targetWidth} x ${targetHeight} ${format.toUpperCase()}.`);
+    } catch (err) {
+        console.error("Export Error:", err);
+        showToast("Export failed. Please check console.");
+    } finally {
+        preview.classList.remove('is-exporting');
+        preview.style.borderRadius = originalRadius;
+        preview.style.boxShadow = originalShadow;
+        preview.style.transform = originalTransform;
+    }
+}
+
+function exportJPG() {
+    return exportBanner('jpg');
+}
+
+function exportPNG() {
+    return exportBanner('png');
 }
 
 if (exportJpgBtn) exportJpgBtn.addEventListener('click', exportJPG);
+if (exportPngBtn) exportPngBtn.addEventListener('click', exportPNG);
 
 function showToast(msg) {
     document.getElementById('toastMsg').innerText = msg;
@@ -893,7 +1140,7 @@ document.getElementById('randomizeBtn').addEventListener('click', () => {
     }
 });
 
-document.getElementById('previewContainer').addEventListener('click', (e) => {
+previewContainer.addEventListener('click', (e) => {
     // Randomization on banner click disabled to prevent accidents while editing text
 });
 
@@ -910,6 +1157,7 @@ const scaleControlGroup = document.getElementById('scaleControlGroup');
 const subjectScaleRange = document.getElementById('subjectScaleRange');
 const subjectScaleVal = document.getElementById('subjectScaleVal');
 const resizeHandle = document.getElementById('resizeHandle');
+const dragHint = document.getElementById('dragHint');
 
 let isDraggingSubject = false;
 let isResizingSubject = false;
@@ -1080,13 +1328,54 @@ window.addEventListener('keydown', (e) => {
 });
 
 angleRange.addEventListener('input', updateMainGradient);
+if (bannerWidthInput) bannerWidthInput.addEventListener('change', setCustomBannerDimension);
+if (bannerHeightInput) bannerHeightInput.addEventListener('change', setCustomBannerDimension);
+if (bannerWidthInput) bannerWidthInput.addEventListener('blur', setCustomBannerDimension);
+if (bannerHeightInput) bannerHeightInput.addEventListener('blur', setCustomBannerDimension);
+if (bannerPresetBtn) bannerPresetBtn.addEventListener('click', (e) => { e.preventDefault(); toggleBannerPresetMenu(); });
+
+if (bannerPresetMenu) {
+    bannerPresetMenu.addEventListener('click', (e) => {
+        const item = e.target.closest('.fancy-dropdown-item');
+        if (!item) return;
+        const val = item.getAttribute('data-value');
+        if (!val) return;
+        setPresetBannerSize(val);
+        closeBannerPresetMenu();
+    });
+}
+
+document.addEventListener('mousedown', (e) => {
+    if (!bannerPresetMenu || !bannerPresetBtn) return;
+    if (bannerPresetMenu.classList.contains('hidden')) return;
+    if (bannerPresetMenu.contains(e.target) || bannerPresetBtn.contains(e.target)) return;
+    closeBannerPresetMenu();
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!bannerPresetMenu || bannerPresetMenu.classList.contains('hidden')) return;
+    closeBannerPresetMenu();
+});
+
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.fancy-stepper-btn');
+    if (!btn) return;
+    const which = btn.getAttribute('data-stepper');
+    const dir = btn.getAttribute('data-dir');
+    if (!which || !dir) return;
+    stepBannerDimension(which, dir, e);
+});
 
 // ===================================================
 // INIT
 // ===================================================
+applyBannerSize(bannerState.width, bannerState.height, true);
+updateBannerPresetUI();
 renderColorStops();
 setGlobalColors('#3b82f6', '#8b5cf6', '#d946ef');
 syncTitleWell('#ffffff');
+updateTitleSize();
 
 // Splash Screen Logic
 window.addEventListener('load', () => {
