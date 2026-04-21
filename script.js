@@ -42,7 +42,6 @@ document.getElementById('themeToggle').addEventListener('click', () => { documen
 
 // --- Title Color Logic --- //
 let titleColorHex = '#ffffff';
-let titleColorFormat = 'hex';
 
 const wellTitle = document.getElementById('wellTitle');
 const glowTitle = document.getElementById('glowTitle');
@@ -55,6 +54,7 @@ const titleWrapper = document.getElementById('titleWrapper');
 const previewContainer = document.getElementById('previewContainer');
 const exportPngBtn = document.getElementById('exportPngBtn');
 const exportJpgBtn = document.getElementById('exportJpgBtn');
+const copyPreviewBtn = document.getElementById('copyPreviewBtn');
 const toolbarPanelHost = document.getElementById('toolbarPanelHost');
 const sizePanelBtn = document.getElementById('sizePanelBtn');
 const textPanelBtn = document.getElementById('textPanelBtn');
@@ -91,12 +91,6 @@ function syncTitleWell(hex) {
     glowTitle.style.backgroundColor = hex;
     mainTitle.style.color = hex;
     mainTitle.classList.remove('text-white');
-    if (titleColorFormat === 'hex') {
-        titleInput.value = hex.toUpperCase();
-    } else {
-        const [r, g, b] = chroma(hex).rgb();
-        titleInput.value = `${r}, ${g}, ${b}`;
-    }
     if (pickerState && pickerState[0]) updateMainGradient();
 }
 
@@ -281,31 +275,6 @@ function toggleToolbarPanel(panelName) {
     }
     setActiveToolbarPanel(panelName);
 }
-
-window.toggleTitleFormat = function () {
-    titleColorFormat = (titleColorFormat === 'hex') ? 'rgb' : 'hex';
-    const tabBg = document.getElementById('tab-bg-title');
-    const tabHex = document.getElementById('tab-hex-title');
-    const tabRgb = document.getElementById('tab-rgb-title');
-    if (titleColorFormat === 'rgb') {
-        tabBg.style.transform = 'translateX(100%)';
-        tabRgb.className = 'relative z-10 flex-1 text-[10px] font-black py-1.5 text-slate-800 dark:text-white transition-colors';
-        tabHex.className = 'relative z-10 flex-1 text-[10px] font-black py-1.5 text-slate-500 dark:text-white/40 transition-colors';
-    } else {
-        tabBg.style.transform = 'translateX(0)';
-        tabHex.className = 'relative z-10 flex-1 text-[10px] font-black py-1.5 text-slate-800 dark:text-white transition-colors';
-        tabRgb.className = 'relative z-10 flex-1 text-[10px] font-black py-1.5 text-slate-500 dark:text-white/40 transition-colors';
-    }
-    syncTitleWell(titleColorHex);
-};
-
-titleInput.addEventListener('change', (e) => {
-    let val = e.target.value.trim();
-    try {
-        let parsed = (titleColorFormat === 'rgb' && !val.startsWith('rgb')) ? chroma(`rgb(${val})`) : chroma(val);
-        syncTitleWell(parsed.hex());
-    } catch (err) { syncTitleWell(titleColorHex); }
-});
 
 wellTitle.addEventListener('click', () => {
     if (activePickerId === 'title') { closePicker(); return; }
@@ -499,22 +468,22 @@ function createStopItem(idx, state) {
 
     // Mini Tabs
     const tabRow = document.createElement('div');
-    tabRow.className = 'relative flex w-16 p-0.5 bg-black/5 dark:bg-white/10 rounded-lg cursor-pointer';
+    tabRow.className = 'relative flex w-20 p-1 bg-black/5 dark:bg-white/10 rounded-xl cursor-pointer';
     tabRow.onclick = () => toggleStopFormat(idx);
 
     const tabBg = document.createElement('div');
     tabBg.id = `tab-bg-${idx}`;
-    tabBg.className = 'absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] bg-white dark:bg-slate-600 rounded shadow-sm transition-transform duration-200 ease-out z-0';
+    tabBg.className = 'absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white dark:bg-slate-600 rounded-lg shadow-sm transition-transform duration-200 ease-out z-0';
     if (state.format === 'rgb') tabBg.style.transform = 'translateX(100%)';
 
     const tabHex = document.createElement('button');
     tabHex.id = `tab-hex-${idx}`;
-    tabHex.className = `relative z-10 flex-1 text-[8px] font-black py-0.5 transition-colors ${state.format === 'hex' ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-white/40'}`;
+    tabHex.className = `relative z-10 flex-1 text-[10px] font-black py-1 transition-colors ${state.format === 'hex' ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-white/40'}`;
     tabHex.textContent = 'HEX';
 
     const tabRgb = document.createElement('button');
     tabRgb.id = `tab-rgb-${idx}`;
-    tabRgb.className = `relative z-10 flex-1 text-[8px] font-black py-0.5 transition-colors ${state.format === 'rgb' ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-white/40'}`;
+    tabRgb.className = `relative z-10 flex-1 text-[10px] font-black py-1 transition-colors ${state.format === 'rgb' ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-white/40'}`;
     tabRgb.textContent = 'RGB';
 
     tabRow.appendChild(tabBg);
@@ -528,7 +497,7 @@ function createStopItem(idx, state) {
     const input = document.createElement('input');
     input.type = 'text';
     input.id = `input${idx}`;
-    input.className = 'w-full text-xs font-mono font-bold text-slate-700 dark:text-white bg-black/5 dark:bg-white/5 border border-transparent rounded-xl py-2 px-3 transition-all outline-none uppercase focus:bg-white dark:focus:bg-white/10 focus:border-blue-500/30';
+    input.className = 'w-full text-xs font-mono font-bold text-slate-700 dark:text-white bg-black/5 dark:bg-white/5 border border-transparent rounded-xl py-2 pl-3 pr-12 transition-all outline-none uppercase focus:bg-white dark:focus:bg-white/10 focus:border-blue-500/30';
     input.value = state.format === 'hex' ? state.val.toUpperCase() : (() => { const [r,g,b] = chroma(state.val).rgb(); return `${r}, ${g}, ${b}`; })();
 
     input.addEventListener('change', (e) => {
@@ -542,7 +511,16 @@ function createStopItem(idx, state) {
         } catch (err) { syncStopUI(idx); }
     });
 
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg bg-white/70 dark:bg-white/10 border border-black/5 dark:border-white/10 text-slate-500 dark:text-white/50 hover:text-blue-500 hover:border-blue-500/20 hover:bg-white dark:hover:bg-white/15 transition-all active:scale-95';
+    copyBtn.title = 'Copy color code';
+    copyBtn.setAttribute('aria-label', 'Copy color code');
+    copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    copyBtn.addEventListener('click', () => copyHexColor(input.id));
+
     inputWrap.appendChild(input);
+    inputWrap.appendChild(copyBtn);
 
     content.appendChild(header);
     content.appendChild(inputWrap);
@@ -613,12 +591,12 @@ function toggleStopFormat(idx) {
 
     if (state.format === 'rgb') {
         tabBg.style.transform = 'translateX(100%)';
-        tabRgb.className = 'relative z-10 flex-1 text-[8px] font-black py-0.5 text-slate-800 dark:text-white transition-colors';
-        tabHex.className = 'relative z-10 flex-1 text-[8px] font-black py-0.5 text-slate-500 dark:text-white/40 transition-colors';
+        tabRgb.className = 'relative z-10 flex-1 text-[10px] font-black py-1 text-slate-800 dark:text-white transition-colors';
+        tabHex.className = 'relative z-10 flex-1 text-[10px] font-black py-1 text-slate-500 dark:text-white/40 transition-colors';
     } else {
         tabBg.style.transform = 'translateX(0)';
-        tabHex.className = 'relative z-10 flex-1 text-[8px] font-black py-0.5 text-slate-800 dark:text-white transition-colors';
-        tabRgb.className = 'relative z-10 flex-1 text-[8px] font-black py-0.5 text-slate-500 dark:text-white/40 transition-colors';
+        tabHex.className = 'relative z-10 flex-1 text-[10px] font-black py-1 text-slate-800 dark:text-white transition-colors';
+        tabRgb.className = 'relative z-10 flex-1 text-[10px] font-black py-1 text-slate-500 dark:text-white/40 transition-colors';
     }
     syncStopUI(idx);
 }
@@ -986,21 +964,49 @@ window.setTitleAlign = function (align, btn) {
 };
 
 async function exportBanner(format) {
-    const preview = previewContainer;
-    if (!preview) return;
-
     const targetWidth = bannerState.width;
     const targetHeight = bannerState.height;
     const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
     const extension = format === 'png' ? 'png' : 'jpg';
     const quality = format === 'png' ? undefined : 1.0;
-    const exportScale = targetWidth / preview.offsetWidth;
-    const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = targetWidth;
-    exportCanvas.height = targetHeight;
+    const exportMultiplier = getRenderMultiplier(targetWidth, targetHeight);
+    const defaultFileName = `taxpod-pro-banner-${Date.now()}.${extension}`;
 
-    showToast(`Preparing ${targetWidth} x ${targetHeight} ${format.toUpperCase()} export...`);
+    showToast(`Preparing ${targetWidth} x ${targetHeight} ${format.toUpperCase()} export at ${exportMultiplier}x detail...`);
 
+    try {
+        const canvas = await renderPreviewCanvas(exportMultiplier);
+        await saveExportCanvas(canvas, {
+            defaultFileName,
+            extension,
+            mimeType,
+            quality
+        });
+        showToast(`Exported ${targetWidth} x ${targetHeight} ${format.toUpperCase()}.`);
+    } catch (err) {
+        if (err && err.name === 'AbortError') {
+            showToast('Export canceled.');
+            return;
+        }
+        console.error("Export Error:", err);
+        showToast("Export failed. Please check console.");
+    }
+}
+
+function getRenderMultiplier(targetWidth, targetHeight) {
+    const maxCanvasDimension = 8192;
+    const requestedMultiplier = Math.max(2, Math.ceil(window.devicePixelRatio || 1));
+    return Math.max(1, Math.min(
+        requestedMultiplier,
+        Math.floor(maxCanvasDimension / Math.max(targetWidth, targetHeight)) || 1
+    ));
+}
+
+async function renderPreviewCanvas(multiplier = 1) {
+    const preview = previewContainer;
+    if (!preview) throw new Error('Preview container not found.');
+
+    const captureScale = (bannerState.width / preview.offsetWidth) * multiplier;
     preview.classList.add('is-exporting');
     const originalRadius = preview.style.borderRadius;
     const originalShadow = preview.style.boxShadow;
@@ -1014,9 +1020,8 @@ async function exportBanner(format) {
     await new Promise(resolve => requestAnimationFrame(resolve));
 
     try {
-        const canvas = await html2canvas(preview, {
-            canvas: exportCanvas,
-            scale: exportScale,
+        return await html2canvas(preview, {
+            scale: captureScale,
             useCORS: true,
             allowTaint: true,
             backgroundColor: null,
@@ -1026,21 +1031,45 @@ async function exportBanner(format) {
             windowWidth: document.documentElement.scrollWidth,
             windowHeight: document.documentElement.scrollHeight
         });
-
-        const link = document.createElement('a');
-        link.download = `taxpod-pro-banner-${Date.now()}.${extension}`;
-        link.href = quality ? canvas.toDataURL(mimeType, quality) : canvas.toDataURL(mimeType);
-        link.click();
-        showToast(`Exported ${targetWidth} x ${targetHeight} ${format.toUpperCase()}.`);
-    } catch (err) {
-        console.error("Export Error:", err);
-        showToast("Export failed. Please check console.");
     } finally {
         preview.classList.remove('is-exporting');
         preview.style.borderRadius = originalRadius;
         preview.style.boxShadow = originalShadow;
         preview.style.transform = originalTransform;
     }
+}
+
+async function saveExportCanvas(canvas, { defaultFileName, extension, mimeType, quality }) {
+    const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob((result) => {
+            if (result) resolve(result);
+            else reject(new Error('Failed to create export file.'));
+        }, mimeType, quality);
+    });
+
+    if ('showSaveFilePicker' in window && window.isSecureContext) {
+        const fileHandle = await window.showSaveFilePicker({
+            suggestedName: defaultFileName,
+            types: [
+                {
+                    description: extension === 'png' ? 'PNG Image' : 'JPEG Image',
+                    accept: {
+                        [mimeType]: [`.${extension}`]
+                    }
+                }
+            ]
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+    }
+
+    const link = document.createElement('a');
+    link.download = defaultFileName;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
 function exportJPG() {
@@ -1053,6 +1082,32 @@ function exportPNG() {
 
 if (exportJpgBtn) exportJpgBtn.addEventListener('click', exportJPG);
 if (exportPngBtn) exportPngBtn.addEventListener('click', exportPNG);
+if (copyPreviewBtn) copyPreviewBtn.addEventListener('click', copyPreviewImage);
+
+async function copyPreviewImage() {
+    if (!navigator.clipboard || typeof ClipboardItem === 'undefined') {
+        showToast('Image copy is not supported in this browser.');
+        return;
+    }
+
+    const multiplier = getRenderMultiplier(bannerState.width, bannerState.height);
+    showToast(`Copying preview image at ${bannerState.width} x ${bannerState.height}...`);
+
+    try {
+        const canvas = await renderPreviewCanvas(multiplier);
+        const blob = await new Promise((resolve, reject) => {
+            canvas.toBlob((result) => {
+                if (result) resolve(result);
+                else reject(new Error('Failed to create preview image.'));
+            }, 'image/png');
+        });
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showToast('Preview image copied to clipboard.');
+    } catch (err) {
+        console.error('Copy Image Error:', err);
+        showToast('Copy image failed. Please check browser permissions.');
+    }
+}
 
 function showToast(msg) {
     document.getElementById('toastMsg').innerText = msg;
@@ -1156,7 +1211,7 @@ const subjectPlaceholder = document.getElementById('subjectPlaceholder');
 const scaleControlGroup = document.getElementById('scaleControlGroup');
 const subjectScaleRange = document.getElementById('subjectScaleRange');
 const subjectScaleVal = document.getElementById('subjectScaleVal');
-const resizeHandle = document.getElementById('resizeHandle');
+const resizeHandles = Array.from(document.querySelectorAll('[data-resize-dir]'));
 const dragHint = document.getElementById('dragHint');
 
 let isDraggingSubject = false;
@@ -1167,7 +1222,7 @@ let subjectY = 0;
 let titleX = 0;
 let titleY = 0;
 let subjectScale = 1;
-let startX, startY, startScale, startWidth;
+let startX, startY, startScale, startWidth, startHeight, resizeDirection;
 let startTitleX, startTitleY;
 
 uploadTrigger.addEventListener('click', () => subjectUpload.click());
@@ -1212,12 +1267,18 @@ subjectScaleRange.addEventListener('input', (e) => {
 });
 
 function startResize(e) {
+    const handle = e.target.closest('[data-resize-dir]');
+    if (!handle) return;
     isResizingSubject = true;
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
     const rect = subjectWrapper.getBoundingClientRect();
     startX = clientX;
+    startY = clientY;
     startScale = subjectScale;
     startWidth = rect.width;
+    startHeight = rect.height;
+    resizeDirection = handle.getAttribute('data-resize-dir') || 'se';
     e.stopPropagation();
     e.preventDefault();
 }
@@ -1236,8 +1297,23 @@ function startDrag(e) {
 function updateInteract(e) {
     if (isResizingSubject) {
         const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-        const deltaX = clientX - startX;
-        const newScale = startScale * (1 + deltaX / startWidth);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        const vectors = {
+            n: [0, -1],
+            ne: [1, -1],
+            e: [1, 0],
+            se: [1, 1],
+            s: [0, 1],
+            sw: [-1, 1],
+            w: [-1, 0],
+            nw: [-1, -1]
+        };
+        const [vx, vy] = vectors[resizeDirection] || vectors.se;
+        const deltaX = (clientX - startX) * vx;
+        const deltaY = (clientY - startY) * vy;
+        const primaryDelta = vx && vy ? ((deltaX + deltaY) / 2) : (vx ? deltaX : deltaY);
+        const baseSize = Math.max(startWidth, startHeight, 1);
+        const newScale = startScale * (1 + primaryDelta / baseSize);
         subjectScale = Math.max(0.1, Math.min(3, newScale));
         
         // Sync with UI
@@ -1257,6 +1333,7 @@ function updateInteract(e) {
 function stopInteract() {
     isDraggingSubject = false;
     isResizingSubject = false;
+    resizeDirection = null;
     subjectWrapper.classList.remove('is-dragging');
 }
 
@@ -1291,8 +1368,10 @@ function updateTitleTransform() {
     titleWrapper.style.transform = `translate(${titleX}px, ${titleY}px)`;
 }
 
-resizeHandle.addEventListener('mousedown', startResize);
-resizeHandle.addEventListener('touchstart', startResize, { passive: false });
+resizeHandles.forEach((handle) => {
+    handle.addEventListener('mousedown', startResize);
+    handle.addEventListener('touchstart', startResize, { passive: false });
+});
 subjectWrapper.addEventListener('mousedown', startDrag);
 subjectWrapper.addEventListener('touchstart', startDrag, { passive: false });
 titleWrapper.addEventListener('mousedown', startTitleDrag);
@@ -1316,15 +1395,6 @@ window.addEventListener('touchend', () => {
     stopInteract();
     isDraggingTitle = false;
     titleWrapper.classList.remove('is-dragging-title');
-});
-
-// ===================================================
-// KEYBOARD SHORTCUTS
-// ===================================================
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-        randomizeGradient();
-    }
 });
 
 angleRange.addEventListener('input', updateMainGradient);
@@ -1366,6 +1436,13 @@ document.addEventListener('click', (e) => {
     if (!which || !dir) return;
     stepBannerDimension(which, dir, e);
 });
+
+if (mainTitle) {
+    mainTitle.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+    });
+}
 
 // ===================================================
 // INIT
